@@ -4,9 +4,10 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.0.0"
+# Имя DMG без версии — ссылка releases/latest/download/… на лендинге
+# всегда указывает на свежий файл (версия зашита в Info.plist)
 APP="AirPodsTracker.app"
-DMG="AirPodsHeadTracker-$VERSION.dmg"
+DMG="AirPodsHeadTracker.dmg"
 STAGE="dmg-stage"
 
 [ -d "$APP" ] || { echo "❌ Сначала собери приложение: ./build.sh"; exit 1; }

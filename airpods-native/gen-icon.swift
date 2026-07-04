@@ -1,5 +1,5 @@
 // Рендерит AppIcon.png (1024×1024): неоновый 3D-куб в стиле интерфейса
-// приложения (#00ffaa на тёмном) с дужками наушников по бокам.
+// приложения (#00ffaa на тёмном).
 // Запуск: swift gen-icon.swift <output.png>
 import AppKit
 
@@ -36,8 +36,8 @@ ctx.drawRadialGradient(gradient,
 ctx.restoreGState()
 
 // Изометрический куб по центру
-let c = CGPoint(x: size/2, y: size/2 - size*0.02)
-let r: CGFloat = size * 0.26          // "радиус" куба
+let c = CGPoint(x: size/2, y: size/2 + size*0.02)
+let r: CGFloat = size * 0.33          // "радиус" куба
 let dx = r * 0.866, dy = r * 0.5      // изометрия 30°
 
 // Вершины: верхняя грань (top), левая и правая грани
@@ -72,23 +72,6 @@ face([top, left, bottom, right], fill: accent.withAlphaComponent(0.28), stroke: 
 ctx.setShadow(offset: .zero, blur: 0, color: nil)
 face([left, bottom, bBottom, bLeft], fill: blue.withAlphaComponent(0.18), stroke: blue)   // левая
 face([right, bottom, bBottom, bRight], fill: accent.withAlphaComponent(0.14), stroke: accent) // правая
-
-// Дужка наушников: арка над кубом
-ctx.setStrokeColor(accent.cgColor)
-ctx.setLineWidth(size * 0.035)
-ctx.setLineCap(.round)
-let arcC = CGPoint(x: size/2, y: c.y + r * 0.55)
-let arcR = r * 1.55
-ctx.addArc(center: arcC, radius: arcR, startAngle: .pi * 0.12, endAngle: .pi * 0.88, clockwise: false)
-ctx.strokePath()
-// «Наушники» на концах дужки
-for a in [CGFloat.pi * 0.12, .pi * 0.88] {
-    let p = CGPoint(x: arcC.x + arcR * cos(a), y: arcC.y + arcR * sin(a))
-    ctx.setFillColor(accent.cgColor)
-    ctx.setShadow(offset: .zero, blur: size * 0.03, color: accent.cgColor)
-    ctx.fillEllipse(in: CGRect(x: p.x - size*0.045, y: p.y - size*0.06, width: size*0.09, height: size*0.09))
-    ctx.setShadow(offset: .zero, blur: 0, color: nil)
-}
 
 image.unlockFocus()
 

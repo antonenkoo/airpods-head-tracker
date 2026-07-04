@@ -88,9 +88,23 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
 .sg input[type=range]{width:90px;accent-color:var(--accent)}
 .sg .val{font-family:monospace;font-size:.8rem;color:var(--accent);text-align:right;min-width:34px}
 .sg .full{grid-column:1/-1}
-.sg select{grid-column:1/-1;background:#252525;color:var(--text);
-  border:1px solid #3a3a3a;border-radius:7px;padding:5px 8px;font-size:.82rem}
 .sg input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px}
+
+/* Кастомный селект */
+.cselect{grid-column:1/-1;position:relative;user-select:none;-webkit-user-select:none;font-size:.82rem}
+.cselect-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:#252525;border:1px solid #3a3a3a;border-radius:9px;
+  padding:7px 12px;cursor:pointer;color:var(--text);transition:border-color .15s}
+.cselect-btn:hover,.cselect.open .cselect-btn{border-color:var(--accent)}
+.cselect-arr{color:var(--accent);font-size:.65rem;transition:transform .2s}
+.cselect.open .cselect-arr{transform:rotate(180deg)}
+.cselect-list{max-height:0;overflow:hidden;transition:max-height .22s ease;
+  background:#1a1a1a;border-radius:9px;margin-top:4px;border:1px solid transparent}
+.cselect.open .cselect-list{max-height:240px;overflow-y:auto;border-color:#333}
+.cselect-opt{padding:7px 12px;cursor:pointer;color:#bbb;transition:background .1s}
+.cselect-opt:hover{background:#252525;color:var(--text)}
+.cselect-opt.sel{color:var(--accent);background:rgba(0,255,170,.08)}
+.cselect-opt.sel::after{content:"✓";float:right}
 
 /* Кнопки */
 .btn-row{display:flex;gap:8px;width:100%;max-width:400px;flex-wrap:wrap}
@@ -224,7 +238,6 @@ button:active{opacity:.65}
 
       <div class="btn-row">
         <button class="btn-primary" id="btnCalib">Калибровать</button>
-        <button class="btn-outline" id="btnCenter">Обнулить вид</button>
       </div>
     </div><!-- /left-top -->
 
@@ -406,18 +419,13 @@ button:active{opacity:.65}
         <span class="val" id="lblVol">70%</span>
 
         <label class="full">Тип сигнала</label>
-        <select id="selSound" class="full">
-          <option value="double">Двойной тон</option>
-          <option value="triple">Три коротких</option>
-          <option value="rising">Нарастающий</option>
-          <option value="ping">Одиночный пинг</option>
-          <option value="low">Низкий гул</option>
-          <option value="alarm">Тревога (агрессивный)</option>
-          <option value="siren">Сирена</option>
-          <option value="rapid">Бипер (быстрый)</option>
-          <option value="harsh">Жёсткий гудок</option>
-          <option value="klaxon">Клаксон</option>
-        </select>
+        <div class="cselect" id="selSoundBox">
+          <div class="cselect-btn">
+            <span id="selSoundLbl">Двойной тон</span>
+            <span class="cselect-arr">▼</span>
+          </div>
+          <div class="cselect-list" id="selSoundList"></div>
+        </div>
       </div>
     </div>
 
@@ -493,7 +501,39 @@ const chkSound     = document.getElementById('chkSound');
 const chkTrack     = document.getElementById('chkTrack');
 const chkPitchVol  = document.getElementById('chkPitchVol');
 const chkYawVol    = document.getElementById('chkYawVol');
-const selSound   = document.getElementById('selSound');
+
+// ── Кастомный селект типа сигнала ──────────────────────────────────────
+const SOUND_NAMES = {
+  double: 'Двойной тон',    triple: 'Три коротких',
+  rising: 'Нарастающий',    ping:   'Одиночный пинг',
+  low:    'Низкий гул',     alarm:  'Тревога (агрессивный)',
+  siren:  'Сирена',         rapid:  'Бипер (быстрый)',
+  harsh:  'Жёсткий гудок',  klaxon: 'Клаксон',
+};
+const selSound = { value: 'double' };   // тот же интерфейс, что у <select>
+const selSoundBox  = document.getElementById('selSoundBox');
+const selSoundLbl  = document.getElementById('selSoundLbl');
+const selSoundList = document.getElementById('selSoundList');
+for (const [val, name] of Object.entries(SOUND_NAMES)) {
+  const opt = document.createElement('div');
+  opt.className = 'cselect-opt' + (val === selSound.value ? ' sel' : '');
+  opt.textContent = name;
+  opt.addEventListener('click', e => {
+    e.stopPropagation();
+    selSound.value = val;
+    selSoundLbl.textContent = name;
+    selSoundList.querySelectorAll('.sel').forEach(o => o.classList.remove('sel'));
+    opt.classList.add('sel');
+    selSoundBox.classList.remove('open');
+    playAlert(); // сразу дать послушать выбранный сигнал
+  });
+  selSoundList.appendChild(opt);
+}
+selSoundBox.querySelector('.cselect-btn').addEventListener('click', () =>
+  selSoundBox.classList.toggle('open'));
+document.addEventListener('click', e => {
+  if (!selSoundBox.contains(e.target)) selSoundBox.classList.remove('open');
+});
 
 // показывать/скрывать sub-settings
 function syncSub(chk, sub) {
@@ -626,13 +666,10 @@ function playAlert() {
 
 document.getElementById('btnTestSound').addEventListener('click', playAlert);
 
-// ── Калибровка ─────────────────────────────────────────────────────────
-document.getElementById('btnCenter').addEventListener('click', () => {
-  viewOff = {yaw:last.yaw, pitch:last.pitch, roll:last.roll};
-});
-
+// ── Калибровка (заодно обнуляет вид куба) ──────────────────────────────
 document.getElementById('btnCalib').addEventListener('click', () => {
   if (!gotData) { postureLbl.textContent = 'Нет данных с AirPods'; return; }
+  viewOff  = {yaw:last.yaw, pitch:last.pitch, roll:last.roll};
   baseline = {yaw:last.yaw, pitch:last.pitch, roll:last.roll};
   badSince = null; lastAlert = -Infinity;
   // сбросить состояние музыкальных жестов
@@ -669,7 +706,7 @@ function updateBar(fillEl, valEl, dev, threshold) {
 
 function updatePostureGraph(dp, dr, thP, thR, isBad) {
   const scale = GRAPH_HALF / GRAPH_MAX_DEG;
-  const cx = Math.max(6, Math.min(154, GRAPH_CX - dr * scale)); // roll → X (inverted to match)
+  const cx = Math.max(6, Math.min(154, GRAPH_CX + dr * scale)); // roll → X: наклон вправо → точка вправо
   const cy = Math.max(6, Math.min(154, GRAPH_CY - dp * scale)); // pitch forward → Y up (вниз на экране)
 
   // threshold ellipse
@@ -927,14 +964,17 @@ async function poll() {
     const d = await fetch('/orientation', {cache:'no-store'}).then(r => r.json());
     if (d.connected) {
       gotData = true;
-      last = {yaw:d.yaw, pitch:d.pitch, roll:d.roll};
-      const y = norm(d.yaw   - viewOff.yaw);
-      const p = norm(d.pitch - viewOff.pitch);
-      const r = norm(d.roll  - viewOff.roll);
+      // roll с датчика приходит инвертированным — переворачиваем на входе,
+      // чтобы показания, график и жесты совпадали с реальным наклоном головы
+      last = {yaw:d.yaw, pitch:d.pitch, roll:-d.roll};
+      const y = norm(last.yaw   - viewOff.yaw);
+      const p = norm(last.pitch - viewOff.pitch);
+      const r = norm(last.roll  - viewOff.roll);
       yawEl.textContent   = y.toFixed(1) + '°';
       pitchEl.textContent = p.toFixed(1) + '°';
       rollEl.textContent  = r.toFixed(1) + '°';
-      cube.style.transform = `rotateY(${y}deg) rotateX(${-p}deg) rotateZ(${-r}deg)`;
+      // куб зеркалит движения головы по горизонтали и вертикали
+      cube.style.transform = `rotateY(${-y}deg) rotateX(${p}deg) rotateZ(${-r}deg)`;
       connEl.className = 'conn ok'; connEl.textContent = 'AirPods активны ✔';
       checkPosture(Date.now());
       checkTrack();
