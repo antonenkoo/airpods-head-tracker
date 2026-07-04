@@ -3,344 +3,317 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AirPods Head Tracker — real head tracking on your Mac</title>
-<meta name="description" content="Free macOS app that reads real head motion from AirPods Pro / Max: 3D visualization, posture monitoring and hands-free music control.">
+<title>AirPods Head Tracker — your head is the interface</title>
+<meta name="description" content="Free macOS app that reads real head motion from AirPods Pro / Max: live 3D tracking, posture guardian and gesture music control. Offline, open source.">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#121212;--card:#1e1e1e;--accent:#00ffaa;--blue:#33b5e5;--red:#ff4444;--dim:#888;--text:#fff}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6}
-a{color:var(--accent)}
-.wrap{max-width:960px;margin:0 auto;padding:0 24px}
-
-/* Language switch */
-.lang{position:fixed;top:16px;right:20px;z-index:10;display:flex;gap:2px;
-  background:#1e1e1ecc;backdrop-filter:blur(10px);border:1px solid #333;border-radius:20px;padding:3px}
-.lang button{background:none;border:none;color:var(--dim);font-size:.8rem;font-weight:600;
-  padding:5px 12px;border-radius:16px;cursor:pointer}
-.lang button.on{background:var(--accent);color:#111}
-
-/* Hero */
-.hero{min-height:92vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:80px 24px 40px;position:relative;overflow:hidden}
-.hero::before{content:"";position:absolute;inset:0;
-  background:radial-gradient(circle at 50% 42%,rgba(0,255,170,.09),transparent 55%);pointer-events:none}
-h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.15;margin:26px 0 14px}
-h1 .grad{background:linear-gradient(90deg,var(--accent),var(--blue));
-  -webkit-background-clip:text;background-clip:text;color:transparent}
-.sub{color:var(--dim);font-size:clamp(1rem,2vw,1.2rem);max-width:620px;margin-bottom:34px}
-.dl{display:inline-flex;flex-direction:column;align-items:center;gap:10px}
-.btn{display:inline-block;background:var(--accent);color:#111;font-weight:700;font-size:1.1rem;
-  padding:16px 42px;border-radius:30px;text-decoration:none;
-  box-shadow:0 8px 30px rgba(0,255,170,.35);transition:transform .15s,box-shadow .15s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,255,170,.5)}
-.dl small{color:var(--dim);font-size:.8rem}
-.free{display:inline-block;border:1px solid var(--accent);color:var(--accent);
-  font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
-  padding:4px 14px;border-radius:14px}
-
-/* Animated cube (WebGL, та же модель что в приложении) */
-.scene{width:280px;height:280px;margin:36px 0 10px}
-#cube3d{width:100%;height:100%;display:block}
-
-/* Sections */
-section{padding:70px 0}
-h2{font-size:1.9rem;text-align:center;margin-bottom:14px}
-.lead{color:var(--dim);text-align:center;max-width:640px;margin:0 auto 44px}
-.shot{display:block;width:100%;max-width:860px;margin:0 auto;border-radius:14px;
-  border:1px solid #2c2c2c;box-shadow:0 24px 70px rgba(0,0,0,.55)}
-
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
-.card{background:var(--card);border:1px solid #2a2a2a;border-radius:14px;padding:24px}
-.card .ico{font-size:1.7rem;margin-bottom:10px}
-.card h3{font-size:1.05rem;margin-bottom:8px;color:var(--accent)}
-.card p{font-size:.9rem;color:#bbb}
-
-/* Install steps */
-.steps{max-width:640px;margin:0 auto;counter-reset:step}
-.step{display:flex;gap:16px;margin-bottom:22px}
-.num{counter-increment:step;flex-shrink:0;width:34px;height:34px;border-radius:50%;
-  background:rgba(0,255,170,.12);border:1px solid var(--accent);color:var(--accent);
-  display:flex;align-items:center;justify-content:center;font-weight:700}
-.num::before{content:counter(step)}
-.step p{color:#ccc;font-size:.95rem}
-.step code{background:#252525;border:1px solid #3a3a3a;border-radius:6px;
-  padding:2px 8px;font-size:.85rem;color:var(--accent);white-space:nowrap}
-.note{max-width:640px;margin:26px auto 0;background:rgba(255,170,0,.07);
-  border:1px solid rgba(255,170,0,.35);border-radius:12px;padding:16px 20px;font-size:.88rem;color:#ddc}
-.note b{color:#ffaa00}
-
-/* Requirements */
-.req{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
-.req span{background:var(--card);border:1px solid #2e2e2e;border-radius:20px;
-  padding:8px 18px;font-size:.85rem;color:#ccc}
-
-footer{border-top:1px solid #222;padding:34px 0;text-align:center;color:var(--dim);font-size:.85rem}
-footer a{color:var(--dim)}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="lang">
-  <button id="langEn" class="on" onclick="setLang('en')">EN</button>
-  <button id="langRu" onclick="setLang('ru')">RU</button>
+<div id="preloader">
+  <div class="pl-num">000</div>
+  <div class="pl-bar"><i></i></div>
+  <div class="pl-lbl">calibrating sensors</div>
 </div>
 
-<header class="hero">
-  <span class="free" data-i18n="free">Free & open source</span>
-  <h1><span class="grad">AirPods Head Tracker</span><br><span data-i18n="h1">for macOS</span></h1>
-  <p class="sub" data-i18n="sub">Real head tracking from your AirPods Pro / Max — right on your Mac.
-    3D visualization, posture monitoring and hands-free music control. No browser hacks: a native app
-    reads the motion sensors directly.</p>
-  <div class="dl">
-    <a class="btn" href="https://github.com/antonenkoo/airpods-head-tracker/releases/latest/download/AirPodsHeadTracker.dmg" data-i18n="dl">⬇ Download for Mac (.dmg)</a>
-    <small data-i18n="dlNote">macOS 14+ · Apple Silicon · 1.6 MB</small>
+<div id="noise"></div>
+<div id="scanlines"></div>
+<div id="progress"></div>
+<div class="cursor-dot"></div>
+<div class="cursor-cube"><div class="cc"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+
+<nav>
+  <a class="logo" href="#top">
+    <img src="favicon.png" alt="">
+    AIRPODS<b>·HEAD·TRACKER</b>
+  </a>
+  <div class="nav-right">
+    <button class="icon-btn" id="themeBtn" title="Tokyo Rain">🌸</button>
+    <button class="icon-btn" id="soundBtn" title="UI sound">◉</button>
+    <div class="lang">
+      <button id="langEn" class="on">EN</button>
+      <button id="langRu">RU</button>
+    </div>
+    <a class="gh-link" href="https://github.com/antonenkoo/airpods-head-tracker" target="_blank" rel="noopener" data-i18n="ghBtn">GitHub ↗</a>
   </div>
-  <div class="scene"><canvas id="cube3d"></canvas></div>
+</nav>
+
+<header class="hero" id="top">
+  <div id="particles"></div>
+  <div class="hero-inner">
+    <div>
+      <span class="hero-chip"><i></i><span data-i18n="chip">v1.5 · free &amp; open source · sensor link ready</span></span>
+      <h1><span id="h1a" data-i18n="h1a">Your head</span><span class="l2" id="h1b" data-i18n="h1b">is the interface</span></h1>
+      <p class="hero-sub" data-i18n="sub">The AirPods in your ears already track every move of your head — Apple just never let that data out. This app does: live 3D tracking, a posture guardian and gesture music control, running natively on your Mac.</p>
+      <div class="hero-cta">
+        <a class="btn-dl" href="https://github.com/antonenkoo/airpods-head-tracker/releases/latest/download/AirPodsHeadTracker.dmg">
+          <span data-i18n="dl">⬇ Download for Mac</span>
+          <small data-i18n="dlNote">macOS 14+ · 1.8 MB · no accounts, no cloud</small>
+        </a>
+      </div>
+    </div>
+    <div class="hero-cube">
+      <canvas id="cube3d"></canvas>
+      <div class="hud tl">
+        <span class="frame">┌─ SENSOR LINK</span><br>
+        <span id="hudVals">YAW <b>0.0°</b>&nbsp; PITCH <b>0.0°</b>&nbsp; ROLL <b>0.0°</b></span><br>
+        <span>STATUS <b>● READY</b></span>
+      </div>
+      <div class="hud br">
+        <span>CMHeadphoneMotionManager</span><br>
+        <span>60 Hz · localhost:8765</span><br>
+        <span class="frame">RENDER: WEBGL ─┘</span>
+      </div>
+    </div>
+  </div>
+  <div class="marquee"><div class="marquee-track"></div></div>
 </header>
 
-<section>
+<section id="features">
   <div class="wrap">
-    <h2 data-i18n="shotH">Everything in one window</h2>
-    <p class="lead" data-i18n="shotP">Put on your AirPods, launch the app — the cube mirrors your head in real time.</p>
-    <img class="shot" src="screenshot.png" alt="AirPods Head Tracker app window">
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <h2 data-i18n="featH">What it does</h2>
-    <p class="lead" data-i18n="featP">Your AirPods already have motion sensors for Spatial Audio. This app puts them to work.</p>
-    <div class="grid">
-      <div class="card"><div class="ico">🧊</div><h3 data-i18n="f1h">Live 3D head tracking</h3>
-        <p data-i18n="f1p">Yaw, pitch and roll streamed from the headphones and rendered as a 3D cube with degree readouts.</p></div>
-      <div class="card"><div class="ico">🪑</div><h3 data-i18n="f2h">Posture monitor</h3>
-        <p data-i18n="f2p">Slouching towards the screen? The app notices your head tilting down and gently reminds you with a sound.</p></div>
-      <div class="card"><div class="ico">🎵</div><h3 data-i18n="f3h">Music by head gestures</h3>
-        <p data-i18n="f3p">Tilt your head to switch tracks in Spotify or Apple Music — hands stay on the keyboard.</p></div>
-      <div class="card"><div class="ico">🔊</div><h3 data-i18n="f4h">Volume by head motion</h3>
-        <p data-i18n="f4p">Optional: nod or turn to nudge the system volume up and down. Fully configurable thresholds.</p></div>
+    <div class="sec-tag" data-i18n="tagFeat">01 — capabilities</div>
+    <h2 data-i18n="featH">A sensor you already own</h2>
+    <p class="lead" data-i18n="featLead">Spatial-audio motion sensors sit idle in your AirPods every day. We turned them into an interface.</p>
+    <div class="cards">
+      <div class="card" data-reveal="0">
+        <div class="idx">/ 001</div><div class="ico">🧊</div>
+        <h3 data-i18n="f1h">Live 3D tracking</h3>
+        <p data-i18n="f1p">Yaw, pitch and roll stream from your ears at 60 fps and drive a cube that mirrors your head in real time.</p>
+      </div>
+      <div class="card" data-reveal="1">
+        <div class="idx">/ 002</div><div class="ico">🪑</div>
+        <h3 data-i18n="f2h">Posture guardian</h3>
+        <p data-i18n="f2p">Slouching towards the screen? The app notices the drift and reminds you with a sound before your neck does.</p>
+      </div>
+      <div class="card" data-reveal="2">
+        <div class="idx">/ 003</div><div class="ico">🎵</div>
+        <h3 data-i18n="f3h">Gesture music</h3>
+        <p data-i18n="f3p">Tilt your head — the track switches in Spotify or Apple Music. Hands never leave the keyboard.</p>
+      </div>
+      <div class="card" data-reveal="3">
+        <div class="idx">/ 004</div><div class="ico">🔊</div>
+        <h3 data-i18n="f4h">Adaptive volume</h3>
+        <p data-i18n="f4p">Turn away from the screen and the volume ducks; look back and it fades in. Fully configurable.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section>
+<section class="demo" id="demo">
+  <div class="demo-stage">
+    <div class="demo-h">
+      <div class="sec-tag" data-i18n="tagDemo">02 — live demo</div>
+      <h2 data-i18n="demoH">Now you try — grab the cube</h2>
+    </div>
+    <canvas id="demoCube"></canvas>
+    <div class="demo-read">
+      <div><div class="v" id="dYaw">0.0°</div><div class="k">yaw</div></div>
+      <div><div class="v" id="dPitch">0.0°</div><div class="k">pitch</div></div>
+      <div><div class="v" id="dRoll">0.0°</div><div class="k">roll</div></div>
+    </div>
+    <p class="demo-note" data-i18n="demoNote">here your mouse does the job — in the app the cube follows <b>your head</b> at 60 fps</p>
+  </div>
+</section>
+
+<section class="showcase" id="app">
   <div class="wrap">
-    <h2 data-i18n="instH">Install in a minute</h2>
+    <div class="sec-tag" data-i18n="tagApp">03 — inside the app</div>
+    <h2 data-i18n="appH">One window. Everything live.</h2>
+    <p class="lead" data-i18n="appLead">No dashboards, no setup wizards. You open it — it tracks. Every control you see reacts in real time.</p>
+    <div class="shot-wrap" data-reveal>
+      <div class="shot-frame" id="shotFrame">
+        <div class="shot-bar"><i></i><i></i><i></i><span>AirPods Head Tracker</span></div>
+        <img src="screenshot.png" alt="AirPods Head Tracker app window">
+        <div class="callout c1"><i></i><span data-i18n="co1">the cube mirrors your head</span></div>
+        <div class="callout c2"><i></i><span data-i18n="co2">posture map with motion trail</span></div>
+        <div class="callout c3"><i></i><span data-i18n="co3">gestures &amp; volume — all configurable</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="story" id="story">
+  <div class="wrap">
+    <span class="glyph g1" data-speed="-1.4">姿勢</span>
+    <span class="glyph g2" data-speed="1.2">東京</span>
+    <span class="glyph g3" data-speed="-0.8">音</span>
+    <div class="sec-tag" data-i18n="tagStory">04 — origin story</div>
+    <h2 data-i18n="storyH">Born at 3 a.m. in Tokyo</h2>
+    <div class="story-blocks">
+      <div class="story-block" data-reveal>
+        <span class="story-meta" data-i18n="s1m">Tokyo · winter · deadline</span>
+        <p data-i18n="s1">A rented desk in Nakameguro. Our developer was shipping a 3 a.m. build, folded over the laptop like a question mark, when a thought arrived through the AirPods: <b>these things track my head for spatial audio — and nobody ever uses that data.</b></p>
+      </div>
+      <div class="story-block" data-reveal>
+        <span class="story-meta" data-i18n="s2m">11 countries · 18 months</span>
+        <p data-i18n="s2">The first prototype was written before sunrise. Then it travelled: debugged on night trains to Kyoto, calibrated in Lisbon cafés, stress-tested on a ferry crossing the Bosphorus. One obsession the whole way: <b>your posture deserves a guardian that lives in your ears.</b></p>
+      </div>
+      <div class="story-block" data-reveal>
+        <span class="story-meta" data-i18n="s3m">Seoul · the sound &amp; the color</span>
+        <p data-i18n="s3">In a Seoul PC-bang the posture guardian found its voice — a synth chirp borrowed from an arcade cabinet two seats away. And the green? That is the exact shade of a pharmacy cross reflected in the wet asphalt of Shibuya crossing at midnight. <b>Some colors you don’t pick. They pick you.</b></p>
+      </div>
+      <div class="story-block" data-reveal>
+        <span class="story-meta" data-i18n="s4m">Home · release day</span>
+        <p data-i18n="s4">Eighteen months later the app came home weighing 1.8 megabytes. No investors, no analytics, no launch party. Just one metric that mattered: <b>the developer’s neck stopped hurting. Yours can too.</b></p>
+      </div>
+      <div class="story-block" data-reveal>
+        <p class="story-quote" data-i18n="q">No servers. No subscriptions. Just physics, math and a small <em>green cube</em>.</p>
+      </div>
+    </div>
+    <div class="route" data-reveal>
+      <svg viewBox="0 0 900 190" fill="none">
+        <path id="routePath" d="M 55 120 C 130 60, 180 150, 235 100 C 320 30, 380 160, 450 110 C 520 65, 580 150, 645 105 C 720 55, 780 140, 845 95"
+          stroke="var(--accent)" stroke-width="1.6" stroke-dasharray="5 7" stroke-linecap="round"/>
+        <g class="route-pt" style="--d:0">  <circle cx="55"  cy="120" r="4"/><text x="55"  y="152">TOKYO</text></g>
+        <g class="route-pt" style="--d:1">  <circle cx="235" cy="100" r="4"/><text x="235" y="132">KYOTO</text></g>
+        <g class="route-pt" style="--d:2">  <circle cx="450" cy="110" r="4"/><text x="450" y="142">LISBON</text></g>
+        <g class="route-pt" style="--d:3">  <circle cx="645" cy="105" r="4"/><text x="645" y="137">BOSPHORUS</text></g>
+        <g class="route-pt" style="--d:4">  <circle cx="845" cy="95"  r="4"/><text x="845" y="127">SEOUL</text></g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<section class="neon" id="philosophy">
+  <div class="wrap neon-wrap">
+    <div class="neon-sign" data-reveal>
+      <span class="neon-jp">姿勢は心の形</span>
+      <span class="neon-sub" data-i18n="neonSub">posture is the shape of the mind</span>
+    </div>
+    <div class="neon-text">
+      <div class="sec-tag" data-i18n="tagWhy">05 — philosophy</div>
+      <h2 data-i18n="whyH">Why it matters</h2>
+      <p data-reveal data-i18n="why1">You will spend roughly 80,000 hours of your life in front of a screen. The way you sit through them quietly becomes the way you feel — focus, energy, even mood follow the spine.</p>
+      <p data-reveal data-i18n="why2">We can’t make you sit straight. But we can make <b>your own ears watch over you</b> — gently, offline, with a small green cube that never judges. It only reminds.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tech">
+  <div class="wrap">
+    <div class="sec-tag" data-i18n="tagTech">06 — under the hood</div>
+    <h2 data-i18n="techH">Ahead of its time — on purpose</h2>
+    <div class="stats">
+      <div class="stat" data-reveal="0"><div class="n"><b data-to="60">0</b><small> fps</small></div><div class="d" data-i18n="st1">render &amp; sensor stream</div></div>
+      <div class="stat" data-reveal="1"><div class="n"><b data-to="100">0</b><small> %</small></div><div class="d" data-i18n="st2">offline — nothing leaves your Mac</div></div>
+      <div class="stat" data-reveal="2"><div class="n"><b data-to="0">0</b></div><div class="d" data-i18n="st3">accounts, clouds, trackers</div></div>
+      <div class="stat" data-reveal="3"><div class="n"><b data-to="1.8">0</b><small> MB</small></div><div class="d" data-i18n="st4">the whole app</div></div>
+    </div>
+    <div class="tech-panels">
+      <div class="terminal" data-reveal>
+        <div class="term-bar"><i></i><i></i><i></i></div>
+        <div class="term-body"><span class="ln dim">_ waiting for scroll…</span></div>
+      </div>
+      <div class="ascii-box" data-reveal="1">
+        <div class="ascii-title">$ render --ascii</div>
+        <pre id="ascii"></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="calc">
+  <div class="wrap">
+    <div class="sec-tag" data-i18n="tagCalc">07 — reality check</div>
+    <h2 data-i18n="calcH">How long will you actually sit?</h2>
+    <p class="lead" data-i18n="calcLead">Move the slider to your average screen time. The math is honest — that’s the point.</p>
+    <div class="calc-box" data-reveal>
+      <div class="calc-slider">
+        <label data-i18n="calcLbl">hours at a screen per day</label>
+        <div class="calc-hval"><b id="calcHVal">8</b><span>h</span></div>
+        <input type="range" id="calcRange" min="1" max="16" value="8">
+      </div>
+      <div class="calc-out">
+        <div><div class="cnum"><b id="calcYears">0</b></div><div class="clbl" data-i18n="calcY">years of your remaining life — seated at a screen</div></div>
+        <div><div class="cnum"><b id="calcDays">0</b></div><div class="clbl" data-i18n="calcD">full 24-hour days every single year</div></div>
+      </div>
+      <p class="calc-note" data-i18n="calcNote">You can’t skip those hours. But you can sit through them well — the guardian is free.</p>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-tag" data-i18n="tagFaq">08 — faq</div>
+    <h2 data-i18n="faqH">Questions, answered like a changelog</h2>
+    <div class="faq">
+      <div class="faq-item" data-reveal="0">
+        <button class="faq-q"><span class="pr">$</span><span>faq --which-airpods</span><i>+</i></button>
+        <div class="faq-a"><p data-i18n="a1">AirPods Pro (1st &amp; 2nd gen), AirPods Max and AirPods 3+ — anything with Spatial Audio head tracking. Regular AirPods 2 don’t carry the motion sensor.</p></div>
+      </div>
+      <div class="faq-item" data-reveal="1">
+        <button class="faq-q"><span class="pr">$</span><span>faq --battery-drain</span><i>+</i></button>
+        <div class="faq-a"><p data-i18n="a2">The motion sensors already run for Spatial Audio whenever your AirPods are on. Reading their stream adds nothing measurable — neither to the AirPods nor to your Mac.</p></div>
+      </div>
+      <div class="faq-item" data-reveal="2">
+        <button class="faq-q"><span class="pr">$</span><span>faq --privacy</span><i>+</i></button>
+        <div class="faq-a"><p data-i18n="a3">Everything runs on localhost. No accounts, no analytics, no network calls. The only thing that ever leaves your Mac is sound from your speakers.</p></div>
+      </div>
+      <div class="faq-item" data-reveal="3">
+        <button class="faq-q"><span class="pr">$</span><span>faq --why-free</span><i>+</i></button>
+        <div class="faq-a"><p data-i18n="a4">Because posture shouldn’t be a subscription. The code is open under MIT — read it, fork it, break it, fix it.</p></div>
+      </div>
+      <div class="faq-item" data-reveal="4">
+        <button class="faq-q"><span class="pr">$</span><span>faq --requirements</span><i>+</i></button>
+        <div class="faq-a"><p data-i18n="a5">macOS 14 Sonoma or newer, Apple Silicon or Intel. AirPods must be connected as the audio output of the Mac.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-tag" data-i18n="tagInstall">09 — install</div>
+    <h2 data-i18n="installH">Running in a minute</h2>
     <div class="steps">
-      <div class="step"><div class="num"></div><p data-i18n="s1">Download the DMG and drag <b>AirPodsTracker</b> into <b>Applications</b>.</p></div>
-      <div class="step"><div class="num"></div><p data-i18n="s2">First launch: <b>right-click the app → Open → Open</b>. On macOS 15 also allow it in System Settings → Privacy & Security → “Open Anyway”.</p></div>
-      <div class="step"><div class="num"></div><p data-i18n="s3">Allow <b>Motion & Fitness</b> access when macOS asks — that’s the head-tracking sensor permission.</p></div>
-      <div class="step"><div class="num"></div><p data-i18n="s4">Put on your AirPods, look straight ahead and press <b>“Calibrate”</b>. Done.</p></div>
+      <div class="step" data-reveal="0"><div class="num">01</div><p data-i18n="i1">Download the DMG and drag <b>AirPodsTracker</b> into <b>Applications</b>.</p></div>
+      <div class="step" data-reveal="1"><div class="num">02</div><p data-i18n="i2">First launch: <b>right-click → Open → Open</b>. On macOS 15 also allow it in System Settings → Privacy &amp; Security.</p></div>
+      <div class="step" data-reveal="2"><div class="num">03</div><p data-i18n="i3">Allow <b>Motion &amp; Fitness</b> access — that is the head-tracking sensor permission.</p></div>
+      <div class="step" data-reveal="3"><div class="num">04</div><p data-i18n="i4">Put your AirPods on, look straight and press <b>Calibrate</b>. Done.</p></div>
     </div>
-    <div class="note"><b data-i18n="noteB">Why the warning on first launch?</b> <span data-i18n="noteT">The app is open source and signed without a paid Apple Developer ID, so Gatekeeper shows a one-time warning. If right-click → Open doesn’t help, run:</span>
-      <br><code>xattr -cr /Applications/AirPodsTracker.app</code></div>
+    <div class="note" data-reveal>
+      <b data-i18n="noteB">Why the warning on first launch?</b>
+      <span data-i18n="noteT">The app is open source and signed without a paid Apple Developer ID, so Gatekeeper shows a one-time warning. If right-click → Open doesn’t help, run:</span>
+      <br><code>xattr -cr /Applications/AirPodsTracker.app</code>
+    </div>
+    <div class="req" data-reveal>
+      <span data-i18n="r1">macOS 14 Sonoma+</span>
+      <span data-i18n="r2">AirPods Pro / Max / 3+</span>
+      <span data-i18n="r3">AirPods as audio output</span>
+      <span data-i18n="r4">Apple Silicon &amp; Intel</span>
+    </div>
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <h2 data-i18n="reqH">Requirements</h2>
-    <div class="req">
-      <span data-i18n="r1">macOS 14 Sonoma or newer</span>
-      <span data-i18n="r2">AirPods Pro (1/2), AirPods Max, AirPods 3+</span>
-      <span data-i18n="r3">AirPods connected as audio output</span>
-    </div>
-  </div>
-</section>
+<div class="guard-toast" id="guardToast">
+  <span class="gt-jp">姿勢チェック</span>
+  <span class="gt-txt" data-i18n="guardMsg">You’ve been here a while — straighten up ◯</span>
+</div>
 
 <footer>
-  <div class="wrap">
-    <p><a href="https://github.com/antonenkoo/airpods-head-tracker">GitHub</a> ·
-      <span data-i18n="foot">Built with CMHeadphoneMotionManager · MIT License</span></p>
+  <div class="foot-marquee"><div class="foot-track">
+    <span>Move freely — sit straight — </span><span>Move freely — sit straight — </span>
+  </div></div>
+  <div class="foot-row">
+    <span data-i18n="footMade">Built with CMHeadphoneMotionManager · MIT license</span>
+    <span>
+      <a href="https://github.com/antonenkoo/airpods-head-tracker" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="https://github.com/antonenkoo/airpods-head-tracker/releases" target="_blank" rel="noopener">Releases</a>
+    </span>
   </div>
 </footer>
 
-<script>
-const i18n = {
-  ru: {
-    free:"Бесплатно и с открытым кодом",
-    h1:"для macOS",
-    sub:"Настоящий head-tracking с AirPods Pro / Max — прямо на Mac. 3D-визуализация, контроль осанки и управление музыкой без рук. Никаких браузерных хаков: нативное приложение читает датчики движения напрямую.",
-    dl:"⬇ Скачать для Mac (.dmg)",
-    dlNote:"macOS 14+ · Apple Silicon · 1.6 МБ",
-    face:"ЛИЦО ☺",
-    shotH:"Всё в одном окне",
-    shotP:"Надень AirPods, запусти приложение — куб повторяет движения головы в реальном времени.",
-    featH:"Что умеет",
-    featP:"В AirPods уже есть датчики движения для Spatial Audio. Это приложение заставляет их работать.",
-    f1h:"3D-трекинг головы", f1p:"Yaw, pitch и roll идут с наушников и отображаются 3D-кубом с точными углами в градусах.",
-    f2h:"Монитор осанки", f2p:"Сутулишься к экрану? Приложение замечает наклон головы вниз и мягко напоминает звуком.",
-    f3h:"Музыка жестами головы", f3p:"Наклони голову — трек переключится в Spotify или Apple Music. Руки остаются на клавиатуре.",
-    f4h:"Громкость движением", f4p:"Опционально: кивком или поворотом регулируй системную громкость. Все пороги настраиваются.",
-    instH:"Установка за минуту",
-    s1:"Скачай DMG и перетащи AirPodsTracker в Applications.",
-    s2:"Первый запуск: правый клик по приложению → Open → Open. На macOS 15 дополнительно разреши в System Settings → Privacy & Security → «Open Anyway».",
-    s3:"Разреши доступ к «Движение и фитнес», когда macOS спросит — это разрешение на датчики head-tracking.",
-    s4:"Надень AirPods, посмотри прямо и нажми «Калибровать». Готово.",
-    noteB:"Почему предупреждение при первом запуске?",
-    noteT:"Приложение с открытым кодом и подписано без платного Apple Developer ID, поэтому Gatekeeper один раз покажет предупреждение. Если правый клик → Open не помог, выполни:",
-    reqH:"Требования",
-    r1:"macOS 14 Sonoma или новее",
-    r2:"AirPods Pro (1/2), AirPods Max, AirPods 3+",
-    r3:"AirPods подключены как аудиовыход",
-    foot:"Работает на CMHeadphoneMotionManager · Лицензия MIT"
-  }
-};
-const en = {};
-document.querySelectorAll('[data-i18n]').forEach(el => en[el.dataset.i18n] = el.innerHTML);
-i18n.en = en;
-
-function setLang(l) {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const t = i18n[l][el.dataset.i18n];
-    if (t !== undefined) el.innerHTML = t;
-  });
-  document.documentElement.lang = l;
-  document.getElementById('langEn').classList.toggle('on', l === 'en');
-  document.getElementById('langRu').classList.toggle('on', l === 'ru');
-  localStorage.setItem('lang', l);
-  if (window.__setFaceLang) window.__setFaceLang(l);
-}
-const saved = localStorage.getItem('lang') ||
-  (navigator.language.startsWith('ru') ? 'ru' : 'en');
-if (saved !== 'en') setLang(saved);
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tsparticles/slim@3.5.0/tsparticles.slim.bundle.min.js"></script>
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.min.js"}}
 </script>
-<script type="module">
-// Та же модель куба, что и в приложении (пресет из v1.5.0)
-import * as THREE from 'three';
-
-const P = { tubeR: 0.01, cornerR: 0.03, glass: 0.09, roughness: 0.32 };
-const ACCENT = 0x00ffaa;
-const SIZE = 1.6;
-
-const canvas = document.getElementById('cube3d');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
-renderer.setClearColor(0x000000, 0);
-
-const scene = new THREE.Scene();
-// Дистанция подобрана так, чтобы ограничивающая сфера куба (r = h·√3)
-// целиком помещалась в кадр при любом повороте: d ≥ r / sin(fov/2)
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
-camera.position.set(0, 0, 4.5);
-camera.lookAt(0, 0, 0);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-const key = new THREE.DirectionalLight(0xffffff, 1.5);
-key.position.set(2.5, 3, 2);
-scene.add(key);
-const rim = new THREE.DirectionalLight(0x66ffcc, 0.5);
-rim.position.set(-3, -1, -2);
-scene.add(rim);
-
-function roundedFrame(tubeR, cornerR, material) {
-  const g = new THREE.Group();
-  const h = SIZE / 2;
-  const cyl = new THREE.CylinderGeometry(tubeR, tubeR, SIZE - cornerR * 2, 20);
-  const arc = new THREE.TorusGeometry(cornerR, tubeR, 14, 16, Math.PI / 2);
-
-  const edge = (axis, a, b) => {
-    const m = new THREE.Mesh(cyl, material);
-    if (axis === 'x') { m.rotation.z = Math.PI / 2; m.position.set(0, a, b); }
-    if (axis === 'y') { m.position.set(a, 0, b); }
-    if (axis === 'z') { m.rotation.x = Math.PI / 2; m.position.set(a, b, 0); }
-    g.add(m);
-  };
-  for (const a of [-h, h]) for (const b of [-h, h]) {
-    edge('x', a, b); edge('y', a, b); edge('z', a, b);
-  }
-
-  const quad = (sx, sy) => (sx > 0 ? (sy > 0 ? 0 : -Math.PI / 2) : (sy > 0 ? Math.PI / 2 : Math.PI));
-  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
-    let m = new THREE.Mesh(arc, material);
-    m.rotation.z = quad(sx, sy);
-    m.position.set(sx * (h - cornerR), sy * (h - cornerR), sz * h);
-    g.add(m);
-    m = new THREE.Mesh(arc, material);
-    m.rotation.x = Math.PI / 2;
-    m.rotateZ(quad(sx, sz));
-    m.position.set(sx * (h - cornerR), sy * h, sz * (h - cornerR));
-    g.add(m);
-    m = new THREE.Mesh(arc, material);
-    m.rotation.y = -Math.PI / 2;
-    m.rotateZ(quad(sz, sy));
-    m.position.set(sx * h, sy * (h - cornerR), sz * (h - cornerR));
-    g.add(m);
-  }
-  return g;
-}
-
-const cubeGroup = new THREE.Group();
-const coreMat = new THREE.MeshPhysicalMaterial({
-  color: ACCENT, roughness: P.roughness, metalness: 0,
-});
-cubeGroup.add(roundedFrame(P.tubeR, P.cornerR, coreMat));
-
-const glass = new THREE.Mesh(
-  new THREE.BoxGeometry(SIZE, SIZE, SIZE),
-  new THREE.MeshPhysicalMaterial({
-    color: ACCENT, transparent: true, opacity: P.glass,
-    roughness: 0.2, side: THREE.DoubleSide, depthWrite: false,
-  })
-);
-glass.renderOrder = 1;
-cubeGroup.add(glass);
-
-// Надпись FACE / ЛИЦО на передней грани
-const labelCanvas = document.createElement('canvas');
-labelCanvas.width = labelCanvas.height = 256;
-const labelCtx = labelCanvas.getContext('2d');
-const labelTex = new THREE.CanvasTexture(labelCanvas);
-function drawFace(text) {
-  labelCtx.clearRect(0, 0, 256, 256);
-  labelCtx.font = 'bold 38px -apple-system, Arial';
-  labelCtx.textAlign = 'center';
-  labelCtx.textBaseline = 'middle';
-  labelCtx.fillStyle = '#00ffaa';
-  labelCtx.fillText(text, 128, 128);
-  labelTex.needsUpdate = true;
-}
-const label = new THREE.Mesh(
-  new THREE.PlaneGeometry(SIZE * 0.92, SIZE * 0.92),
-  new THREE.MeshBasicMaterial({ map: labelTex, transparent: true })
-);
-label.position.z = SIZE / 2 + 0.003;
-label.renderOrder = 2;
-cubeGroup.add(label);
-
-window.__setFaceLang = l => drawFace(l === 'ru' ? 'ЛИЦО ☺' : 'FACE ☺');
-window.__setFaceLang(document.documentElement.lang);
-
-scene.add(cubeGroup);
-
-function resize() {
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (w && h) {
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-  }
-}
-new ResizeObserver(resize).observe(canvas);
-resize();
-
-const t0 = performance.now();
-(function loop() {
-  const t = (performance.now() - t0) / 1000;
-  cubeGroup.rotation.y = t * 0.5;
-  cubeGroup.rotation.x = Math.sin(t * 0.6) * 0.3;
-  cubeGroup.rotation.z = Math.sin(t * 0.4) * 0.12;
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
-})();
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
