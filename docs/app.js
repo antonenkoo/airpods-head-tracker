@@ -391,16 +391,23 @@ const dYaw = $('#dYaw'), dPitch = $('#dPitch'), dRoll = $('#dRoll');
   demoCanvas.addEventListener('pointercancel', endDrag);
 
   (function demoLoop() {
+    const idle = !dragging && performance.now() - idleSince > 2500;
     if (!dragging) {
       // инерция затухает…
       g.rotation.y += vx; g.rotation.x += vy;
       vx *= 0.95; vy *= 0.95;
       // …а после 2.5с покоя куб начинает лениво кружиться сам
-      if (performance.now() - idleSince > 2500) {
+      if (idle) {
         g.rotation.y += 0.004;
         g.rotation.x += Math.sin(performance.now() / 2400) * 0.0016;
       }
     }
+    // roll: «банковка» — куб кренится в сторону вращения (как самолёт в вираже),
+    // в простое легонько покачивается, чтобы значение жило
+    const bankTarget = idle
+      ? Math.sin(performance.now() / 2100) * 0.09
+      : Math.max(-0.5, Math.min(0.5, -vx * 22));
+    g.rotation.z += (bankTarget - g.rotation.z) * 0.06;
     const R = Math.PI / 180;
     const norm180 = v => { while (v > 180) v -= 360; while (v < -180) v += 360; return v; };
     if (dYaw) {
