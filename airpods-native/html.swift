@@ -10,7 +10,8 @@ let indexHTML = """
 :root{
   --bg:#121212;--card:#1e1e1e;--accent:#00ffaa;--blue:#33b5e5;
   --red:#ff4444;--warn:#ffaa00;--dim:#555;--text:#fff;
-  --cs:150px; /* cube size */
+  /* cube size: масштабируется от вьюпорта, чтобы куб всегда влезал */
+  --cs:clamp(80px, min(34vw, 26vh), 150px);
 }
 body{background:var(--bg);color:var(--text);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
@@ -30,11 +31,14 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
   padding:calc(var(--cs)*0.3) 0;overflow:visible}
 .scene{width:var(--cs);height:var(--cs);
   perspective:calc(var(--cs)*3.5);flex-shrink:0;overflow:visible}
-.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .05s linear}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;will-change:transform}
 .face{position:absolute;width:var(--cs);height:var(--cs);
-  border:2px solid var(--accent);background:rgba(0,255,170,.07);
+  border:3px solid var(--accent);background:rgba(0,255,170,.07);
   display:flex;align-items:center;justify-content:center;
-  font-weight:bold;font-size:calc(var(--cs)*0.06);border-radius:calc(var(--cs)*0.09)}
+  font-weight:bold;font-size:calc(var(--cs)*0.06);border-radius:calc(var(--cs)*0.09);
+  /* свечение придаёт рёбрам объём — грань не исчезает, встав ребром */
+  box-shadow:0 0 10px rgba(0,255,170,.4),inset 0 0 12px rgba(0,255,170,.22)}
+.right,.left{box-shadow:0 0 10px rgba(51,181,229,.4),inset 0 0 12px rgba(51,181,229,.22)}
 .front{transform:rotateY(0deg)   translateZ(calc(var(--cs)/2));background:rgba(0,255,170,.16);color:var(--accent)}
 .back {transform:rotateY(180deg) translateZ(calc(var(--cs)/2))}
 .right{transform:rotateY(90deg)  translateZ(calc(var(--cs)/2));border-color:var(--blue)}
@@ -77,8 +81,22 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
 /* Музыка */
 .music-section{display:flex;flex-direction:column;gap:8px}
 .toggle-row{display:flex;align-items:center;gap:8px}
-.toggle-row input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0}
 .toggle-row label{font-size:.85rem;color:#bbb;cursor:pointer}
+
+/* Тоглы-свитчи вместо чекбоксов */
+.toggle-row input[type=checkbox],.sg input[type=checkbox]{
+  -webkit-appearance:none;appearance:none;margin:0;flex-shrink:0;
+  width:34px;height:20px;border-radius:10px;background:#333;
+  position:relative;cursor:pointer;outline:none;
+  transition:background .2s ease}
+.toggle-row input[type=checkbox]::before,.sg input[type=checkbox]::before{
+  content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;
+  border-radius:50%;background:#8a8a8a;
+  transition:transform .2s ease,background .2s ease}
+.toggle-row input[type=checkbox]:checked,.sg input[type=checkbox]:checked{
+  background:var(--accent)}
+.toggle-row input[type=checkbox]:checked::before,.sg input[type=checkbox]:checked::before{
+  transform:translateX(14px);background:#111}
 .sub-settings{padding-left:22px;display:flex;flex-direction:column;gap:5px}
 .sub-settings.hidden{display:none}
 
@@ -88,7 +106,6 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
 .sg input[type=range]{width:90px;accent-color:var(--accent)}
 .sg .val{font-family:monospace;font-size:.8rem;color:var(--accent);text-align:right;min-width:34px}
 .sg .full{grid-column:1/-1}
-.sg input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px}
 
 /* Кастомный селект */
 .cselect{grid-column:1/-1;position:relative;user-select:none;-webkit-user-select:none;font-size:.82rem}
@@ -149,8 +166,8 @@ button:active{opacity:.65}
     gap:8px;overflow:visible;
     padding-right:12px;
   }
-  /* куб — размер управляется JS через --cs */
-  :root{ --cs: 182px; }
+  /* куб — пропорционально вьюпорту, максимум 190px */
+  :root{ --cs: clamp(80px, min(16vw, 18vh), 190px); }
   .left-top{
     flex:1;min-height:0;
     display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
@@ -298,7 +315,7 @@ button:active{opacity:.65}
       <div class="music-section">
 
         <div class="toggle-row">
-          <input type="checkbox" id="chkTrack" checked>
+          <input type="checkbox" id="chkTrack">
           <label for="chkTrack">Переключение треков (крен головы)</label>
         </div>
         <div class="sub-settings" id="trackSub">
@@ -353,7 +370,7 @@ button:active{opacity:.65}
         </div>
 
         <div class="toggle-row" style="margin-top:4px">
-          <input type="checkbox" id="chkYawVol" checked>
+          <input type="checkbox" id="chkYawVol">
           <label for="chkYawVol">Громкость ↓ при повороте головы (Yaw)</label>
         </div>
         <div class="sub-settings" id="yawSub">
@@ -706,7 +723,7 @@ function updateBar(fillEl, valEl, dev, threshold) {
 
 function updatePostureGraph(dp, dr, thP, thR, isBad) {
   const scale = GRAPH_HALF / GRAPH_MAX_DEG;
-  const cx = Math.max(6, Math.min(154, GRAPH_CX + dr * scale)); // roll → X: наклон вправо → точка вправо
+  const cx = Math.max(6, Math.min(154, GRAPH_CX - dr * scale)); // roll → X: наклон влево → точка влево
   const cy = Math.max(6, Math.min(154, GRAPH_CY - dp * scale)); // pitch forward → Y up (вниз на экране)
 
   // threshold ellipse
@@ -722,13 +739,37 @@ function updatePostureGraph(dp, dr, thP, thR, isBad) {
     return `<circle cx="${p.cx.toFixed(1)}" cy="${p.cy.toFixed(1)}" r="${r}" fill="${isBad?'var(--red)':'var(--accent)'}" opacity="${op}"/>`;
   }).join('');
 
-  // dot
-  postureDot2d.setAttribute('cx', cx.toFixed(1));
-  postureDot2d.setAttribute('cy', cy.toFixed(1));
+  // позиция точки лерпится в rAF-цикле, здесь только цель и цвет
+  dotTarget = {x: cx, y: cy};
   postureDot2d.setAttribute('fill', isBad ? 'var(--red)' : 'var(--accent)');
 
   graphVals.textContent = `P:${dp.toFixed(1)}° R:${dr.toFixed(1)}°`;
 }
+
+// ── Плавный рендер (60 fps, лерп к последним данным с датчика) ─────────
+let view      = null;                          // текущие углы куба на экране
+let viewTarget = {y:0, p:0, r:0};              // цель из последнего poll
+let dotPos    = {x:GRAPH_CX, y:GRAPH_CY};      // текущая точка графика
+let dotTarget = {x:GRAPH_CX, y:GRAPH_CY};
+const LERP = 0.25;
+
+function renderFrame() {
+  if (gotData) {
+    if (view === null) view = {...viewTarget};
+    // кратчайший путь по углу — чтобы не крутило через 360° на границе ±180
+    view.y = norm(view.y + norm(viewTarget.y - view.y) * LERP);
+    view.p = norm(view.p + norm(viewTarget.p - view.p) * LERP);
+    view.r = norm(view.r + norm(viewTarget.r - view.r) * LERP);
+    // куб зеркалит движения головы по горизонтали и вертикали
+    cube.style.transform = `rotateY(${-view.y}deg) rotateX(${view.p}deg) rotateZ(${-view.r}deg)`;
+  }
+  dotPos.x += (dotTarget.x - dotPos.x) * LERP;
+  dotPos.y += (dotTarget.y - dotPos.y) * LERP;
+  postureDot2d.setAttribute('cx', dotPos.x.toFixed(2));
+  postureDot2d.setAttribute('cy', dotPos.y.toFixed(2));
+  requestAnimationFrame(renderFrame);
+}
+requestAnimationFrame(renderFrame);
 
 // ── Плавный фейд громкости ─────────────────────────────────────────────
 function startFade(from, to, durationMs) {
@@ -973,8 +1014,8 @@ async function poll() {
       yawEl.textContent   = y.toFixed(1) + '°';
       pitchEl.textContent = p.toFixed(1) + '°';
       rollEl.textContent  = r.toFixed(1) + '°';
-      // куб зеркалит движения головы по горизонтали и вертикали
-      cube.style.transform = `rotateY(${-y}deg) rotateX(${p}deg) rotateZ(${-r}deg)`;
+      // рендер куба — в rAF-цикле с лерпом, здесь только цель
+      viewTarget = {y, p, r};
       connEl.className = 'conn ok'; connEl.textContent = 'AirPods активны ✔';
       checkPosture(Date.now());
       checkTrack();
