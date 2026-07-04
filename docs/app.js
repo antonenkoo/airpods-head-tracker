@@ -545,53 +545,6 @@ ScrollTrigger.create({
   },
 });
 
-/* ═══ Звуковой дизайн (тонкие UI-блипы) ══════════════════════════════ */
-const Snd = (() => {
-  let ctx = null;
-  let enabled = localStorage.getItem('snd') !== 'off';
-  const ac = () => ctx || (ctx = new (window.AudioContext || window.webkitAudioContext)());
-  function tone(freq, dur, vol, type = 'sine', delay = 0) {
-    if (!enabled) return;
-    try {
-      const a = ac(); if (a.state === 'suspended') a.resume();
-      const o = a.createOscillator(), g = a.createGain();
-      o.connect(g); g.connect(a.destination);
-      o.type = type; o.frequency.value = freq;
-      const tt = a.currentTime + delay;
-      g.gain.setValueAtTime(0, tt);
-      g.gain.linearRampToValueAtTime(vol, tt + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
-      o.start(tt); o.stop(tt + dur + 0.05);
-    } catch (e) {}
-  }
-  return {
-    get on() { return enabled; },
-    toggle() { enabled = !enabled; localStorage.setItem('snd', enabled ? 'on' : 'off'); return enabled; },
-    hover() { tone(2300, 0.04, 0.018); },
-    click() { tone(1100, 0.09, 0.045, 'triangle'); },
-    chirp() { tone(880, 0.12, 0.05); tone(1320, 0.14, 0.05, 'sine', 0.13); },
-    arp()   { [660, 880, 1100, 1760].forEach((f, i) => tone(f, 0.12, 0.05, 'triangle', i * 0.09)); },
-  };
-})();
-const soundBtn = $('#soundBtn');
-const syncSndBtn = () => {
-  soundBtn.classList.toggle('off', !Snd.on);
-  soundBtn.textContent = Snd.on ? '◉' : '◌';
-};
-syncSndBtn();
-soundBtn.addEventListener('click', () => { Snd.toggle(); syncSndBtn(); Snd.click(); });
-if (fine) {
-  let lastHover = 0;
-  document.addEventListener('mouseover', e => {
-    if (!e.target.closest('a,button,.card,.faq-q')) return;
-    const now = performance.now();
-    if (now - lastHover > 120) { lastHover = now; Snd.hover(); }
-  });
-}
-document.addEventListener('click', e => {
-  if (e.target.closest('a,button')) Snd.click();
-});
-
 /* ═══ Тема Tokyo Rain ════════════════════════════════════════════════ */
 const THEMES = {
   green: { hex: 0x00ffaa, css: '#00ffaa', second: '#33b5e5' },
@@ -683,7 +636,6 @@ if (guard) {
   const showGuard = () => {
     if (document.hidden) return;
     guard.classList.add('show');
-    Snd.chirp();
     setTimeout(() => guard.classList.remove('show'), 9000);
   };
   guard.addEventListener('click', () => guard.classList.remove('show'));
@@ -703,7 +655,6 @@ if (guard) {
     if (buf !== 'sit') return;
     buf = '';
     flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
-    Snd.arp();
     // вывеска на 4 секунды меняет текст
     const jp = $('.neon-jp');
     if (jp) {

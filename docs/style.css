@@ -440,7 +440,7 @@ html.no-motion [data-reveal]{opacity:1;transform:none}
   .hero-chip{margin:0 auto 22px}
   .hero-sub{margin-left:auto;margin-right:auto}
   .hero-cta{justify-content:center}
-  .hero-cube{min-height:300px;order:2}
+  .hero-cube{min-height:300px;order:2;padding:8px 0 24px}
   #cube3d{width:min(300px,70vw)}
   .hud{display:none}
   .cards{grid-template-columns:repeat(2,1fr)}
@@ -451,6 +451,13 @@ html.no-motion [data-reveal]{opacity:1;transform:none}
   .cards{grid-template-columns:1fr}
   section{padding:12vh 18px}
   .gh-link{display:none}
+  .guard-toast{max-width:92vw;padding:13px 18px;gap:10px}
+  .gt-txt{font-size:.68rem}
+  .demo-read .v{font-size:1.2rem}
+  .faq-q{font-size:.78rem;padding:15px 16px}
+  .faq-a p{padding:0 16px 16px 36px}
+  .marquee{margin-top:3vh}
+  .route-pt text{font-size:14px}
 }
 @media(prefers-reduced-motion:reduce){
   #noise,.marquee-track,.foot-track{animation:none}
