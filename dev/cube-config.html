@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Куб — конфигуратор</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#121212;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  display:flex;height:100vh;overflow:hidden}
+#stage{flex:1;min-width:0}
+canvas{display:block;width:100%;height:100%}
+.panel{width:340px;flex-shrink:0;background:#191919;border-left:1px solid #2a2a2a;
+  padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+h1{font-size:1rem;color:#00ffaa}
+.hint{font-size:.72rem;color:#777;margin-bottom:4px}
+.ctl{display:flex;flex-direction:column;gap:3px}
+.ctl .row{display:flex;justify-content:space-between;align-items:center}
+.ctl label{font-size:.78rem;color:#bbb}
+.ctl .val{font-family:monospace;font-size:.78rem;color:#00ffaa}
+input[type=range]{width:100%;accent-color:#00ffaa}
+.chk{display:flex;align-items:center;gap:8px;font-size:.8rem;color:#bbb}
+.chk input{accent-color:#00ffaa;width:15px;height:15px}
+textarea{background:#111;border:1px solid #333;border-radius:8px;color:#00ffaa;
+  font-family:monospace;font-size:.72rem;padding:8px;height:130px;resize:none;width:100%}
+button{background:#00ffaa;color:#111;border:none;border-radius:16px;
+  padding:9px;font-weight:700;font-size:.85rem;cursor:pointer}
+button:active{opacity:.7}
+.sep{border-top:1px solid #2a2a2a;margin:4px 0}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div class="panel">
+  <h1>Конфигуратор куба</h1>
+  <div class="hint">Крути куб мышкой (зажми и тяни, колесо — зум). Настрой ползунками и жми «Скопировать настройки» — пришли мне результат.</div>
+
+  <div class="ctl"><div class="row"><label>Толщина трубки</label><span class="val" id="v_tube"></span></div>
+    <input type="range" id="s_tube" min="0.010" max="0.070" step="0.001" value="0.028"></div>
+  <div class="ctl"><div class="row"><label>Радиус скругления углов</label><span class="val" id="v_corner"></span></div>
+    <input type="range" id="s_corner" min="0.03" max="0.30" step="0.005" value="0.09"></div>
+  <div class="ctl"><div class="row"><label>Разворот купола (°)</label><span class="val" id="v_twist"></span></div>
+    <input type="range" id="s_twist" min="0" max="120" step="5" value="0"></div>
+  <div class="ctl"><div class="row"><label>Выталкивание купола</label><span class="val" id="v_push"></span></div>
+    <input type="range" id="s_push" min="-0.5" max="1.2" step="0.05" value="0.45"></div>
+  <div class="chk"><input type="checkbox" id="s_fill" checked><label for="s_fill">Заливать углы куполами</label></div>
+
+  <div class="sep"></div>
+
+  <div class="ctl"><div class="row"><label>Прозрачность граней</label><span class="val" id="v_glass"></span></div>
+    <input type="range" id="s_glass" min="0" max="0.35" step="0.01" value="0.07"></div>
+  <div class="ctl"><div class="row"><label>Матовость (roughness)</label><span class="val" id="v_rough"></span></div>
+    <input type="range" id="s_rough" min="0.05" max="0.9" step="0.01" value="0.28"></div>
+  <div class="ctl"><div class="row"><label>Лак (clearcoat)</label><span class="val" id="v_coat"></span></div>
+    <input type="range" id="s_coat" min="0" max="1" step="0.05" value="0.7"></div>
+  <div class="ctl"><div class="row"><label>Свечение (emissive)</label><span class="val" id="v_emis"></span></div>
+    <input type="range" id="s_emis" min="0" max="1" step="0.05" value="0"></div>
+
+  <div class="sep"></div>
+  <div class="chk"><input type="checkbox" id="s_auto"><label for="s_auto">Автовращение (как от датчиков)</label></div>
+
+  <textarea id="out" readonly></textarea>
+  <button id="copy">Скопировать настройки</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const ACCENT = 0x00ffaa;
+const SIZE = 1.6;
+
+const P = {
+  tubeR: 0.028, cornerR: 0.09, twistDeg: 0, push: 0.45, fill: true,
+  glass: 0.07, roughness: 0.28, clearcoat: 0.7, emissive: 0,
+};
+
+function roundedFrame(tubeR, cornerR, material) {
+  const g = new THREE.Group();
+  const h = SIZE / 2;
+  const edgeLen = SIZE - cornerR * 2;
+  const cyl = new THREE.CylinderGeometry(tubeR, tubeR, edgeLen, 24);
+  const arc = new THREE.TorusGeometry(cornerR, tubeR, 16, 18, Math.PI / 2);
+
+  const edge = (axis, a, b) => {
+    const m = new THREE.Mesh(cyl, material);
+    if (axis === 'x') { m.rotation.z = Math.PI / 2; m.position.set(0, a, b); }
+    if (axis === 'y') { m.position.set(a, 0, b); }
+    if (axis === 'z') { m.rotation.x = Math.PI / 2; m.position.set(a, b, 0); }
+    g.add(m);
+  };
+  for (const a of [-h, h]) for (const b of [-h, h]) {
+    edge('x', a, b); edge('y', a, b); edge('z', a, b);
+  }
+
+  const quad = (sx, sy) => (sx > 0 ? (sy > 0 ? 0 : -Math.PI / 2) : (sy > 0 ? Math.PI / 2 : Math.PI));
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+    let m = new THREE.Mesh(arc, material);
+    m.rotation.z = quad(sx, sy);
+    m.position.set(sx * (h - cornerR), sy * (h - cornerR), sz * h);
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.x = Math.PI / 2;
+    m.rotateZ(quad(sx, sz));
+    m.position.set(sx * (h - cornerR), sy * h, sz * (h - cornerR));
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.y = -Math.PI / 2;
+    m.rotateZ(quad(sz, sy));
+    m.position.set(sx * h, sy * (h - cornerR), sz * (h - cornerR));
+    g.add(m);
+  }
+  return g;
+}
+
+function buildCube(p) {
+  const g = new THREE.Group();
+  const core = new THREE.MeshPhysicalMaterial({
+    color: ACCENT, roughness: p.roughness, metalness: 0,
+    clearcoat: p.clearcoat, clearcoatRoughness: 0.3,
+    emissive: ACCENT, emissiveIntensity: p.emissive,
+  });
+  g.add(roundedFrame(p.tubeR, p.cornerR, core));
+
+  if (p.fill) {
+    const h = SIZE / 2;
+    const r = p.cornerR * Math.SQRT2 * 1.01;
+    const phiFor = (sx, sz) =>
+      sx < 0 ? (sz > 0 ? 0 : Math.PI * 1.5) : (sz > 0 ? Math.PI / 2 : Math.PI);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      const patch = new THREE.SphereGeometry(
+        r, 24, 24,
+        phiFor(sx, sz), Math.PI / 2,
+        sy > 0 ? 0 : Math.PI / 2, Math.PI / 2
+      );
+      const s = new THREE.Mesh(patch, core);
+      const axis = new THREE.Vector3(sx, sy, sz).normalize();
+      const twist = p.twistDeg * Math.PI / 180;
+      if (twist) s.setRotationFromAxisAngle(axis, twist);
+      s.position.set(sx * (h - p.cornerR), sy * (h - p.cornerR), sz * (h - p.cornerR))
+        .addScaledVector(axis, p.cornerR * p.push);
+      g.add(s);
+    }
+  }
+
+  if (p.glass > 0) {
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(SIZE, SIZE, SIZE),
+      new THREE.MeshPhysicalMaterial({
+        color: ACCENT, transparent: true, opacity: p.glass,
+        roughness: 0.2, side: THREE.DoubleSide, depthWrite: false,
+      })
+    );
+    glass.renderOrder = 1;
+    g.add(glass);
+  }
+  return g;
+}
+
+// ── Сцена ──
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x141414);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
+camera.position.set(1.6, 1.2, 2.8);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(2.5, 3, 2);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x66ffcc, 0.5);
+rim.position.set(-3, -1, -2);
+scene.add(rim);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+let cube = buildCube(P);
+scene.add(cube);
+
+function rebuild() {
+  scene.remove(cube);
+  cube.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  const rot = cube.rotation.clone();
+  cube = buildCube(P);
+  cube.rotation.copy(rot);
+  scene.add(cube);
+  updateOut();
+}
+
+function resize() {
+  const w = canvas.parentElement.clientWidth, h = canvas.parentElement.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+const autoChk = document.getElementById('s_auto');
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  if (autoChk.checked) {
+    cube.rotation.y = t * 0.6;
+    cube.rotation.x = Math.sin(t * 0.7) * 0.35;
+    cube.rotation.z = Math.sin(t * 0.45) * 0.15;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+})();
+
+// ── Ползунки ──
+function hook(id, key, fmt = v => v) {
+  const el = document.getElementById('s_' + id);
+  const val = document.getElementById('v_' + id);
+  const upd = () => {
+    P[key] = Number(el.value);
+    val.textContent = fmt(el.value);
+    rebuild();
+  };
+  el.addEventListener('input', upd);
+  P[key] = Number(el.value);
+  val.textContent = fmt(el.value);
+}
+hook('tube',   'tubeR');
+hook('corner', 'cornerR');
+hook('twist',  'twistDeg', v => v + '°');
+hook('push',   'push');
+hook('glass',  'glass');
+hook('rough',  'roughness');
+hook('coat',   'clearcoat');
+hook('emis',   'emissive');
+document.getElementById('s_fill').addEventListener('change', e => {
+  P.fill = e.target.checked; rebuild();
+});
+
+const out = document.getElementById('out');
+function updateOut() {
+  out.value = JSON.stringify(P, null, 2);
+}
+updateOut();
+
+document.getElementById('copy').addEventListener('click', () => {
+  out.select();
+  navigator.clipboard?.writeText(out.value).catch(() => document.execCommand('copy'));
+});
+</script>
+</body>
+</html>

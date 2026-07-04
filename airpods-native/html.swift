@@ -26,32 +26,10 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
 .left-col,.right-col{display:contents}
 .left-top,.left-bot{display:contents}
 
-/* 3D куб */
-.scene-wrap{width:100%;display:flex;justify-content:center;
-  padding:calc(var(--cs)*0.3) 0;overflow:visible}
-.scene{width:var(--cs);height:var(--cs);
-  perspective:calc(var(--cs)*3.5);flex-shrink:0;overflow:visible}
-.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;will-change:transform}
-.face{position:absolute;width:var(--cs);height:var(--cs);
-  --fc:var(--accent);
-  border:2px solid var(--fc);background:rgba(0,255,170,.07);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:bold;font-size:calc(var(--cs)*0.06);border-radius:calc(var(--cs)*0.09);
-  transform-style:preserve-3d;
-  box-shadow:0 0 8px rgba(0,255,170,.28)}
-.right,.left{box-shadow:0 0 8px rgba(51,181,229,.28)}
-/* Псевдослои ±2px по Z дают рёбрам настоящую толщину: грань, встав ребром,
-   остаётся видимой линией, а не рассыпается в пиксели */
-.face::before,.face::after{content:"";position:absolute;inset:-2px;
-  border:2px solid var(--fc);border-radius:inherit;pointer-events:none}
-.face::before{transform:translateZ(2.2px)}
-.face::after{transform:translateZ(-2.2px)}
-.front{transform:rotateY(0deg)   translateZ(calc(var(--cs)/2));background:rgba(0,255,170,.16);color:var(--accent)}
-.back {transform:rotateY(180deg) translateZ(calc(var(--cs)/2))}
-.right{transform:rotateY(90deg)  translateZ(calc(var(--cs)/2));--fc:var(--blue)}
-.left {transform:rotateY(-90deg) translateZ(calc(var(--cs)/2));--fc:var(--blue)}
-.top  {transform:rotateX(90deg)  translateZ(calc(var(--cs)/2))}
-.bottom{transform:rotateX(-90deg)translateZ(calc(var(--cs)/2))}
+/* 3D куб (WebGL) */
+.scene-wrap{width:100%;display:flex;justify-content:center;overflow:visible}
+.scene{width:calc(var(--cs)*1.55);height:calc(var(--cs)*1.55);flex-shrink:0}
+#cube3d{width:100%;height:100%;display:block}
 
 /* Track-switch flash */
 .track-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -265,16 +243,7 @@ button:active{opacity:.65}
 
     <div class="left-top">
       <div class="scene-wrap">
-        <div class="scene">
-          <div class="cube" id="cube">
-            <div class="face front" data-i18n="faceFront">FACE ☺</div>
-            <div class="face back"></div>
-            <div class="face right"></div>
-            <div class="face left"></div>
-            <div class="face top"></div>
-            <div class="face bottom"></div>
-          </div>
-        </div>
+        <div class="scene"><canvas id="cube3d"></canvas></div>
       </div>
 
       <div class="card">
@@ -561,7 +530,6 @@ let lang = localStorage.getItem('lang') || 'en';
 const t = k => L[lang][k] ?? k;
 
 // ── DOM refs ────────────────────────────────────────────────────────────
-const cube       = document.getElementById('cube');
 const yawEl      = document.getElementById('yaw');
 const pitchEl    = document.getElementById('pitch');
 const rollEl     = document.getElementById('roll');
@@ -668,6 +636,7 @@ function setLang(l) {
   soundOptEls.forEach((el, val) => el.textContent = t('snd_' + val));
   selSoundLbl.textContent = t('snd_' + selSound.value);
   sliderUpds.forEach(f => f());
+  if (window.__setFaceText) window.__setFaceText(t('faceFront'));
   if (!baseline) postureLbl.textContent = t('notCalibrated');
   langEnBtn.classList.toggle('on', l === 'en');
   langRuBtn.classList.toggle('on', l === 'ru');
@@ -883,8 +852,8 @@ function renderFrame() {
     view.y = norm(view.y + norm(viewTarget.y - view.y) * LERP);
     view.p = norm(view.p + norm(viewTarget.p - view.p) * LERP);
     view.r = norm(view.r + norm(viewTarget.r - view.r) * LERP);
-    // куб зеркалит движения головы по горизонтали и вертикали
-    cube.style.transform = `rotateY(${-view.y}deg) rotateX(${view.p}deg) rotateZ(${-view.r}deg)`;
+    // куб (WebGL-модуль) зеркалит движения головы по горизонтали и вертикали
+    if (window.__setCubeRotation) window.__setCubeRotation(view.y, view.p, view.r);
   }
   dotPos.x += (dotTarget.x - dotPos.x) * LERP;
   dotPos.y += (dotTarget.y - dotPos.y) * LERP;
@@ -1186,6 +1155,149 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('focus', kickPoll);
 setLang(lang);
 poll();
+</script>
+
+<script type="importmap">
+{"imports":{"three":"/three.module.min.js"}}
+</script>
+<script type="module">
+// ── WebGL-куб: цельный тонкий каркас со скруглёнными углами + стеклянные грани.
+// Параметры подобраны в конфигураторе (пресет Марка).
+import * as THREE from 'three';
+
+const P = {
+  tubeR: 0.01, cornerR: 0.03,
+  glass: 0.09, roughness: 0.32, clearcoat: 0, emissive: 0,
+};
+const ACCENT = 0x00ffaa;
+const SIZE = 1.6;
+
+const canvas = document.getElementById('cube3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
+camera.position.set(0, 0.18, 3.3);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(2.5, 3, 2);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x66ffcc, 0.5);
+rim.position.set(-3, -1, -2);
+scene.add(rim);
+
+// Каркас: 12 цилиндров-рёбер + 24 четверть-дуги на углах
+function roundedFrame(tubeR, cornerR, material) {
+  const g = new THREE.Group();
+  const h = SIZE / 2;
+  const cyl = new THREE.CylinderGeometry(tubeR, tubeR, SIZE - cornerR * 2, 20);
+  const arc = new THREE.TorusGeometry(cornerR, tubeR, 14, 16, Math.PI / 2);
+
+  const edge = (axis, a, b) => {
+    const m = new THREE.Mesh(cyl, material);
+    if (axis === 'x') { m.rotation.z = Math.PI / 2; m.position.set(0, a, b); }
+    if (axis === 'y') { m.position.set(a, 0, b); }
+    if (axis === 'z') { m.rotation.x = Math.PI / 2; m.position.set(a, b, 0); }
+    g.add(m);
+  };
+  for (const a of [-h, h]) for (const b of [-h, h]) {
+    edge('x', a, b); edge('y', a, b); edge('z', a, b);
+  }
+
+  const quad = (sx, sy) => (sx > 0 ? (sy > 0 ? 0 : -Math.PI / 2) : (sy > 0 ? Math.PI / 2 : Math.PI));
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+    let m = new THREE.Mesh(arc, material);
+    m.rotation.z = quad(sx, sy);
+    m.position.set(sx * (h - cornerR), sy * (h - cornerR), sz * h);
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.x = Math.PI / 2;
+    m.rotateZ(quad(sx, sz));
+    m.position.set(sx * (h - cornerR), sy * h, sz * (h - cornerR));
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.y = -Math.PI / 2;
+    m.rotateZ(quad(sz, sy));
+    m.position.set(sx * h, sy * (h - cornerR), sz * (h - cornerR));
+    g.add(m);
+  }
+  return g;
+}
+
+const cubeGroup = new THREE.Group();
+const coreMat = new THREE.MeshPhysicalMaterial({
+  color: ACCENT, roughness: P.roughness, metalness: 0,
+  clearcoat: P.clearcoat, clearcoatRoughness: 0.3,
+  emissive: ACCENT, emissiveIntensity: P.emissive,
+});
+cubeGroup.add(roundedFrame(P.tubeR, P.cornerR, coreMat));
+
+// Стеклянные грани
+const glass = new THREE.Mesh(
+  new THREE.BoxGeometry(SIZE, SIZE, SIZE),
+  new THREE.MeshPhysicalMaterial({
+    color: ACCENT, transparent: true, opacity: P.glass,
+    roughness: 0.2, side: THREE.DoubleSide, depthWrite: false,
+  })
+);
+glass.renderOrder = 1;
+cubeGroup.add(glass);
+
+// Надпись FACE на передней грани (canvas-текстура, обновляется при смене языка)
+const labelCanvas = document.createElement('canvas');
+labelCanvas.width = labelCanvas.height = 256;
+const labelCtx = labelCanvas.getContext('2d');
+const labelTex = new THREE.CanvasTexture(labelCanvas);
+function drawFace(text) {
+  labelCtx.clearRect(0, 0, 256, 256);
+  labelCtx.font = 'bold 38px -apple-system, Arial';
+  labelCtx.textAlign = 'center';
+  labelCtx.textBaseline = 'middle';
+  labelCtx.fillStyle = '#00ffaa';
+  labelCtx.fillText(text, 128, 128);
+  labelTex.needsUpdate = true;
+}
+const label = new THREE.Mesh(
+  new THREE.PlaneGeometry(SIZE * 0.92, SIZE * 0.92),
+  new THREE.MeshBasicMaterial({ map: labelTex, transparent: true })
+);
+label.position.z = SIZE / 2 + 0.003;
+label.renderOrder = 2;
+cubeGroup.add(label);
+
+scene.add(cubeGroup);
+
+// Мост в основной скрипт: он лерпит углы, мы применяем.
+// Порядок 'YXZ' повторяет CSS rotateY·rotateX·rotateZ; знаки — перевод
+// из CSS-пространства (Y вниз) в three (Y вверх): rotateY(-y) rotateX(p) rotateZ(-r)
+// эквивалентно rotation.set(-p, -y, +r).
+const RAD = Math.PI / 180;
+cubeGroup.rotation.order = 'YXZ';
+window.__setCubeRotation = (y, p, r) => {
+  cubeGroup.rotation.set(-p * RAD, -y * RAD, r * RAD);
+};
+window.__setFaceText = drawFace;
+drawFace(t('faceFront'));
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (w && h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+(function loop() {
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+})();
 </script>
 </body>
 </html>

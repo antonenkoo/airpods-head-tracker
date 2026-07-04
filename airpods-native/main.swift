@@ -156,6 +156,16 @@ func httpResponse(status: String, contentType: String, body: Data) -> Data {
 
 let htmlData = indexHTML.data(using: .utf8)!
 
+// three.js из ресурсов бандла — отдаём по /three.module.min.js (работает офлайн)
+let threeJSData: Data = {
+    if let url = Bundle.main.url(forResource: "three.module.min", withExtension: "js"),
+       let d = try? Data(contentsOf: url) {
+        return d
+    }
+    fputs("⚠️  three.module.min.js не найден в Resources — куб не отрисуется\n", stderr)
+    return Data()
+}()
+
 final class HTTPServer {
     private let listener: NWListener
 
@@ -199,6 +209,9 @@ final class HTTPServer {
                 DispatchQueue.global(qos: .userInitiated).async { mediaAction(action, level: level) }
                 resp = httpResponse(status: "200 OK", contentType: "application/json",
                                     body: "{\"ok\":true}".data(using: .utf8)!)
+
+            } else if path.hasPrefix("/three.module.min.js") {
+                resp = httpResponse(status: "200 OK", contentType: "application/javascript", body: threeJSData)
 
             } else if path == "/api/players" {
                 let s = appRunning(spotifyID), m = appRunning(musicID)

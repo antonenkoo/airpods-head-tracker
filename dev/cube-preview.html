@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Куб — было / стало / варианты</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#121212;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:28px}
+h1{text-align:center;font-size:1.3rem;margin-bottom:4px;color:#00ffaa}
+.sub{text-align:center;color:#777;font-size:.85rem;margin-bottom:24px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1240px;margin:0 auto}
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.cell{background:#191919;border:1px solid #2a2a2a;border-radius:16px;padding:12px}
+canvas,.css-stage{width:100%;height:290px;display:block;border-radius:12px;background:#141414}
+.name{margin-top:10px;font-weight:700;color:#00ffaa;font-size:.95rem;text-align:center}
+.desc{font-size:.75rem;color:#888;text-align:center;margin-top:2px}
+
+/* ── CSS-кубы из приложения ── */
+.css-stage{display:flex;align-items:center;justify-content:center;overflow:hidden}
+.scene{--cs:130px;width:var(--cs);height:var(--cs);perspective:calc(var(--cs)*3.5)}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;will-change:transform}
+.face{position:absolute;width:var(--cs);height:var(--cs);
+  --fc:#00ffaa;
+  border:2px solid var(--fc);background:rgba(0,255,170,.07);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:bold;font-size:calc(var(--cs)*0.09);border-radius:calc(var(--cs)*0.09);
+  color:#00ffaa}
+.front{transform:rotateY(0deg)   translateZ(calc(var(--cs)/2));background:rgba(0,255,170,.16)}
+.back {transform:rotateY(180deg) translateZ(calc(var(--cs)/2))}
+.right{transform:rotateY(90deg)  translateZ(calc(var(--cs)/2));--fc:#33b5e5}
+.left {transform:rotateY(-90deg) translateZ(calc(var(--cs)/2));--fc:#33b5e5}
+.top  {transform:rotateX(90deg)  translateZ(calc(var(--cs)/2))}
+.bottom{transform:rotateX(-90deg)translateZ(calc(var(--cs)/2))}
+/* вариант B: свечение + псевдослои ±2px (как в приложении сейчас) */
+.vol .face{transform-style:preserve-3d;box-shadow:0 0 8px rgba(0,255,170,.28)}
+.vol .right,.vol .left{box-shadow:0 0 8px rgba(51,181,229,.28)}
+.vol .face::before,.vol .face::after{content:"";position:absolute;inset:-2px;
+  border:2px solid var(--fc);border-radius:inherit;pointer-events:none}
+.vol .face::before{transform:translateZ(2.2px)}
+.vol .face::after{transform:translateZ(-2.2px)}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<h1>Было → стало → новые варианты</h1>
+<div class="sub">A и B — CSS-куб приложения (до и после «объёма»). 1–4 — новый цельный каркас на WebGL.</div>
+<div class="grid">
+  <div class="cell">
+    <div class="css-stage"><div class="scene"><div class="cube" id="cssA">
+      <div class="face front">FACE ☺</div><div class="face back"></div>
+      <div class="face right"></div><div class="face left"></div>
+      <div class="face top"></div><div class="face bottom"></div>
+    </div></div></div>
+    <div class="name">A · Оригинал</div>
+    <div class="desc">Как было изначально: плоские грани, бордер 2px</div></div>
+  <div class="cell"><canvas id="c1"></canvas>
+    <div class="name">1 · Классика</div>
+    <div class="desc">Цельная трубка, среднее скругление, без свечения</div></div>
+  <div class="cell"><canvas id="c4"></canvas>
+    <div class="name">4 · Ультратонкий, залитые углы</div>
+    <div class="desc">Тонкая трубка, крупное скругление, углы заполнены</div></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const ACCENT = 0x00ffaa;
+const SIZE = 1.6;
+
+// Общая «голова»: одинаковое движение для всех кубов
+function pose(t) {
+  return {
+    y: t * 0.6,                       // рад
+    x: Math.sin(t * 0.7) * 0.35,
+    z: Math.sin(t * 0.45) * 0.15,
+  };
+}
+
+// ── CSS-кубы ──
+const deg = 180 / Math.PI;
+const cssA = document.getElementById('cssA');
+const t0 = performance.now();
+(function cssLoop() {
+  const t = (performance.now() - t0) / 1000;
+  const p = pose(t);
+  cssA.style.transform = `rotateX(${p.x * deg}deg) rotateY(${p.y * deg}deg) rotateZ(${p.z * deg}deg)`;
+  requestAnimationFrame(cssLoop);
+})();
+
+// ── WebGL-кубы ──
+function roundedFrame(tubeR, cornerR, material) {
+  const g = new THREE.Group();
+  const h = SIZE / 2;
+  const edgeLen = SIZE - cornerR * 2;
+  const cyl = new THREE.CylinderGeometry(tubeR, tubeR, edgeLen, 20);
+  const arc = new THREE.TorusGeometry(cornerR, tubeR, 14, 16, Math.PI / 2);
+
+  const edge = (axis, a, b) => {
+    const m = new THREE.Mesh(cyl, material);
+    if (axis === 'x') { m.rotation.z = Math.PI / 2; m.position.set(0, a, b); }
+    if (axis === 'y') { m.position.set(a, 0, b); }
+    if (axis === 'z') { m.rotation.x = Math.PI / 2; m.position.set(a, b, 0); }
+    g.add(m);
+  };
+  for (const a of [-h, h]) for (const b of [-h, h]) {
+    edge('x', a, b); edge('y', a, b); edge('z', a, b);
+  }
+
+  const quad = (sx, sy) => (sx > 0 ? (sy > 0 ? 0 : -Math.PI / 2) : (sy > 0 ? Math.PI / 2 : Math.PI));
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+    let m = new THREE.Mesh(arc, material);
+    m.rotation.z = quad(sx, sy);
+    m.position.set(sx * (h - cornerR), sy * (h - cornerR), sz * h);
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.x = Math.PI / 2;
+    m.rotateZ(quad(sx, sz));
+    m.position.set(sx * (h - cornerR), sy * h, sz * (h - cornerR));
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.y = -Math.PI / 2;
+    m.rotateZ(quad(sz, sy));
+    m.position.set(sx * h, sy * (h - cornerR), sz * (h - cornerR));
+    g.add(m);
+  }
+  return g;
+}
+
+function tubeCube(tubeR, cornerR, fillCorners, twist = Math.PI / 2, push = 0.25) {
+  const g = new THREE.Group();
+  const core = new THREE.MeshPhysicalMaterial({
+    color: ACCENT, roughness: 0.28, metalness: 0,
+    clearcoat: 0.7, clearcoatRoughness: 0.3,
+  });
+  g.add(roundedFrame(tubeR, cornerR, core));
+  if (fillCorners) {
+    // «Заливка» углов: восьмушка сферы радиуса R√2 из центра скругления —
+    // проходит точно через осевые линии трёх дуг и закрывает окно между ними.
+    // Каждый октант строим параметрами SphereGeometry (без зеркал — нормали честные).
+    const h = SIZE / 2;
+    const r = cornerR * Math.SQRT2 * 1.01; // чуть с запасом — купол лежит поверх стыка
+    // phi-квадрант по (sx,sz): x = -r·cosφ·sinθ, z = r·sinφ·sinθ
+    const phiFor = (sx, sz) =>
+      sx < 0 ? (sz > 0 ? 0 : Math.PI * 1.5) : (sz > 0 ? Math.PI / 2 : Math.PI);
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+      const patch = new THREE.SphereGeometry(
+        r, 20, 20,
+        phiFor(sx, sz), Math.PI / 2,
+        sy > 0 ? 0 : Math.PI / 2, Math.PI / 2
+      );
+      const s = new THREE.Mesh(patch, core);
+      // twist — разворот купола вокруг диагонали угла (0 = лепестки вдоль рёбер),
+      // push — выталкивание наружу вдоль диагонали (в долях cornerR)
+      const axis = new THREE.Vector3(sx, sy, sz).normalize();
+      if (twist) s.setRotationFromAxisAngle(axis, twist);
+      s.position.set(sx * (h - cornerR), sy * (h - cornerR), sz * (h - cornerR))
+        .addScaledVector(axis, cornerR * push);
+      g.add(s);
+    }
+  }
+  return g;
+}
+
+// Полупрозрачные грани как у варианта A
+function glassFaces() {
+  const glass = new THREE.Mesh(
+    new THREE.BoxGeometry(SIZE, SIZE, SIZE),
+    new THREE.MeshPhysicalMaterial({
+      color: ACCENT, transparent: true, opacity: 0.07,
+      roughness: 0.2, side: THREE.DoubleSide, depthWrite: false,
+    })
+  );
+  glass.renderOrder = 1;
+  return glass;
+}
+
+function makeScene(canvas, build) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x141414);
+
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
+  camera.position.set(0, 0.25, 3.4);
+  camera.lookAt(0, 0, 0);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const key = new THREE.DirectionalLight(0xffffff, 1.5);
+  key.position.set(2.5, 3, 2);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x66ffcc, 0.5);
+  rim.position.set(-3, -1, -2);
+  scene.add(rim);
+
+  const cube = build();
+  scene.add(cube);
+
+  function resize() {
+    const w = canvas.clientWidth, hgt = canvas.clientHeight;
+    renderer.setSize(w, hgt, false);
+    camera.aspect = w / hgt;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  (function loop() {
+    const t = (performance.now() - t0) / 1000;
+    const p = pose(t);
+    cube.rotation.x = p.x; cube.rotation.y = p.y; cube.rotation.z = p.z;
+    renderer.render(scene, camera);
+    requestAnimationFrame(loop);
+  })();
+}
+
+// 1: лепестки купола вдоль рёбер каркаса (twist 0), сильнее наружу
+makeScene(document.getElementById('c1'), () => {
+  const g = tubeCube(0.028, 0.09, true, 0, 0.45);
+  g.add(glassFaces());
+  return g;
+});
+// 4: купол чуть назад, ближе к телу куба
+makeScene(document.getElementById('c4'), () => {
+  const g = tubeCube(0.020, 0.16, true, Math.PI / 2, 0.06);
+  g.add(glassFaces());
+  return g;
+});
+</script>
+</body>
+</html>

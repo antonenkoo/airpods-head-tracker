@@ -6,7 +6,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.4.0"
+VERSION="1.5.0"
 APP="AirPodsTracker.app"
 BIN_DIR="$APP/Contents/MacOS"
 RES_DIR="$APP/Contents/Resources"
@@ -30,6 +30,7 @@ if [ ! -f AppIcon.icns ]; then
   rm -rf "$ICONSET" AppIcon.png
 fi
 cp AppIcon.icns "$RES_DIR/AppIcon.icns"
+cp three.module.min.js "$RES_DIR/three.module.min.js"
 
 echo "🔨 Компилирую Swift…"
 swiftc -O main.swift html.swift app.swift -o "$BIN" \
