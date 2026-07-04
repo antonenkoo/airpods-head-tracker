@@ -12,13 +12,16 @@ import AppKit
 final class OrientationStore {
     private let lock = NSLock()
     private var yaw = 0.0, pitch = 0.0, roll = 0.0
-    private var connected = false
+    private var lastUpdate: Date? = nil
 
     func update(y: Double, p: Double, r: Double) {
-        lock.lock(); yaw = y; pitch = p; roll = r; connected = true; lock.unlock()
+        lock.lock(); yaw = y; pitch = p; roll = r; lastUpdate = Date(); lock.unlock()
     }
     func json() -> Data {
         lock.lock(); defer { lock.unlock() }
+        // connected — по свежести данных: наушники сняли/отключили → false,
+        // подключили снова → true без перезапуска приложения
+        let connected = lastUpdate.map { Date().timeIntervalSince($0) < 1.5 } ?? false
         let s = String(format: "{\"yaw\":%.2f,\"pitch\":%.2f,\"roll\":%.2f,\"connected\":%@}",
                        yaw, pitch, roll, connected ? "true" : "false")
         return s.data(using: .utf8)!
@@ -30,41 +33,53 @@ let store = OrientationStore()
 // MARK: - CoreMotion
 let motionManager = CMHeadphoneMotionManager()
 
-func startMotion() {
-    fputs("🔍 isDeviceMotionAvailable = \(motionManager.isDeviceMotionAvailable)\n", stderr)
-    guard motionManager.isDeviceMotionAvailable else {
-        fputs("❌ Head-tracking недоступен. Нужны AirPods Pro/Max/3 и подключение к этому Mac.\n", stderr)
-        return
+// Delegate: логируем подключение/отключение и перезапускаем сессию датчика,
+// когда наушники появились уже после старта приложения
+final class MotionDelegate: NSObject, CMHeadphoneMotionManagerDelegate {
+    func headphoneMotionManagerDidConnect(_ manager: CMHeadphoneMotionManager) {
+        fputs("🎧 Наушники подключились — стартую трекинг\n", stderr)
+        beginMotionUpdates()
     }
-    let status = CMHeadphoneMotionManager.authorizationStatus()
-    fputs("ℹ️  Статус доступа: \(status.rawValue) (0=не запрошен, 1=ограничен, 2=запрещён, 3=разрешён)\n", stderr)
+    func headphoneMotionManagerDidDisconnect(_ manager: CMHeadphoneMotionManager) {
+        fputs("🎧 Наушники отключились — жду следующего подключения\n", stderr)
+    }
+}
+let motionDelegate = MotionDelegate()
 
+private var motionCallbackCount = 0
+
+func beginMotionUpdates() {
     let deg = 180.0 / Double.pi
-    var callbackCount = 0
     motionManager.startDeviceMotionUpdates(to: .main) { motion, error in
         if let error = error {
             fputs("⚠️  Ошибка датчика: \(error.localizedDescription)\n", stderr)
             return
         }
-        guard let m = motion else {
-            fputs("⚠️  motion == nil (без ошибки)\n", stderr)
-            return
-        }
-        callbackCount += 1
-        if callbackCount <= 3 || callbackCount % 100 == 0 {
-            fputs("📡 callback #\(callbackCount): yaw=\(String(format:"%.1f",m.attitude.yaw*deg)) pitch=\(String(format:"%.1f",m.attitude.pitch*deg)) roll=\(String(format:"%.1f",m.attitude.roll*deg))\n", stderr)
+        guard let m = motion else { return }
+        motionCallbackCount += 1
+        if motionCallbackCount <= 3 || motionCallbackCount % 500 == 0 {
+            fputs("📡 callback #\(motionCallbackCount): yaw=\(String(format:"%.1f",m.attitude.yaw*deg)) pitch=\(String(format:"%.1f",m.attitude.pitch*deg)) roll=\(String(format:"%.1f",m.attitude.roll*deg))\n", stderr)
         }
         store.update(y: m.attitude.yaw * deg,
                      p: m.attitude.pitch * deg,
                      r: m.attitude.roll * deg)
     }
-    fputs("✅ startDeviceMotionUpdates вызван, жду первый callback…\n", stderr)
+}
 
-    // Через 3 секунды проверим — пришли ли данные
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-        let j = store.json()
-        let s = String(data: j, encoding: .utf8) ?? "?"
-        fputs("⏱  3с после старта, store = \(s)\n", stderr)
+func startMotion() {
+    motionManager.delegate = motionDelegate
+    let status = CMHeadphoneMotionManager.authorizationStatus()
+    fputs("ℹ️  isDeviceMotionAvailable = \(motionManager.isDeviceMotionAvailable), доступ: \(status.rawValue) (0=не запрошен, 1=ограничен, 2=запрещён, 3=разрешён)\n", stderr)
+
+    // Стартуем сразу — если наушников ещё нет, данные пойдут после подключения
+    beginMotionUpdates()
+
+    // Страховка: если сессия датчика не активна (наушники подключили позже,
+    // BT-переподключение и т.п.) — перезапускаем каждые 3 секунды
+    Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+        if !motionManager.isDeviceMotionActive {
+            beginMotionUpdates()
+        }
     }
 }
 
@@ -104,15 +119,23 @@ func runScriptFire(_ code: String) {
     }
 }
 
+// Проверка, запущено ли приложение (AppleScript `tell` сам запускает
+// приложение, поэтому шлём команды только уже работающим плеерам)
+func appRunning(_ bundleID: String) -> Bool {
+    !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
+}
+let spotifyID = "com.spotify.client"
+let musicID   = "com.apple.Music"
+
 func mediaAction(_ action: String, level: Int? = nil) {
     switch action {
     case "next":
-        // try/end try: молча игнорирует ошибку если приложение не запущено
-        runScriptFire("try\ntell application \"Spotify\" to next track\nend try")
-        runScriptFire("try\ntell application \"Music\" to next track\nend try")
+        // try/end try: молча игнорирует ошибку если приложение не отвечает
+        if appRunning(spotifyID) { runScriptFire("try\ntell application \"Spotify\" to next track\nend try") }
+        if appRunning(musicID)   { runScriptFire("try\ntell application \"Music\" to next track\nend try") }
     case "prev":
-        runScriptFire("try\ntell application \"Spotify\" to previous track\nend try")
-        runScriptFire("try\ntell application \"Music\" to previous track\nend try")
+        if appRunning(spotifyID) { runScriptFire("try\ntell application \"Spotify\" to previous track\nend try") }
+        if appRunning(musicID)   { runScriptFire("try\ntell application \"Music\" to previous track\nend try") }
     case "vol":
         if let v = level { runScriptFire("set volume output volume \(max(0, min(100, v)))") }
     default: break
@@ -176,6 +199,11 @@ final class HTTPServer {
                 DispatchQueue.global(qos: .userInitiated).async { mediaAction(action, level: level) }
                 resp = httpResponse(status: "200 OK", contentType: "application/json",
                                     body: "{\"ok\":true}".data(using: .utf8)!)
+
+            } else if path == "/api/players" {
+                let s = appRunning(spotifyID), m = appRunning(musicID)
+                resp = httpResponse(status: "200 OK", contentType: "application/json",
+                                    body: "{\"spotify\":\(s),\"music\":\(m)}".data(using: .utf8)!)
 
             } else if path == "/api/vol-get" {
                 // Блокирующий вызов: уже на фоновом потоке NW, ок

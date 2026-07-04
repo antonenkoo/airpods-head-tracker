@@ -139,6 +139,17 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
 .cselect-opt.sel{color:var(--accent);background:rgba(0,255,170,.08)}
 .cselect-opt.sel::after{content:"✓";float:right}
 
+/* Предупреждение «плеер не запущен» */
+.warn-note{display:flex;align-items:flex-start;gap:8px;
+  background:rgba(255,170,0,.07);border:1px solid rgba(255,170,0,.3);
+  border-left:3px solid var(--warn);border-radius:8px;
+  padding:8px 10px;font-size:.74rem;line-height:1.35;color:#e8c890;
+  overflow:hidden;max-height:80px;opacity:1;
+  transition:max-height .3s ease,opacity .25s ease,margin .3s ease,padding .3s ease}
+.warn-note.hidden{max-height:0;opacity:0;margin-top:-5px;padding-top:0;padding-bottom:0;
+  border-width:0;pointer-events:none}
+.warn-note .wi{flex-shrink:0;color:var(--warn);font-size:.85rem;line-height:1.2}
+
 /* Кнопки */
 .btn-row{display:flex;gap:8px;width:100%;max-width:400px;flex-wrap:wrap}
 button{flex:1;border:none;padding:11px 8px;font-size:.85rem;font-weight:600;
@@ -358,6 +369,10 @@ button:active{opacity:.65}
             <div class="bar-track"><div class="bar-fill" id="bTrackHold" style="width:0%;background:var(--accent)"></div></div>
             <span id="trackStatus" style="font-size:.7rem;color:var(--accent);font-family:monospace;min-width:38px;text-align:right"></span>
           </div>
+          <div class="warn-note hidden" id="trackWarn" style="margin-top:4px">
+            <span class="wi">●</span>
+            <span data-i18n="noPlayer">Spotify or Music isn’t running — open one of them to switch tracks with head gestures.</span>
+          </div>
           <div style="font-size:.7rem;color:#444;margin-top:2px" data-i18n="permNote">⚠ On first use macOS will ask for permission — allow it</div>
         </div>
 
@@ -504,6 +519,7 @@ const L = {
     pause:'⏳ pause', hold:'hold…', ready:'ready', quiet:'🔇 quiet',
     connOk:'AirPods active ✔', connLost:'AirPods lost…',
     connWait:'Waiting for AirPods — put them in', connErr:'No connection: ',
+    noPlayer:'Spotify or Music isn’t running — open one of them to switch tracks with head gestures.',
     u_deg:'°', u_pct:'%', u_s:' s', u_ms:'ms', u_sec:'s',
     snd_double:'Double tone', snd_triple:'Three short', snd_rising:'Rising',
     snd_ping:'Single ping', snd_low:'Low hum', snd_alarm:'Alarm (aggressive)',
@@ -534,6 +550,7 @@ const L = {
     pause:'⏳ пауза', hold:'держи…', ready:'готов', quiet:'🔇 тихо',
     connOk:'AirPods активны ✔', connLost:'AirPods потеряны…',
     connWait:'Жду AirPods — надень наушники', connErr:'Нет связи: ',
+    noPlayer:'Spotify или Музыка не запущены — открой один из плееров, чтобы переключать треки жестами головы.',
     u_deg:'°', u_pct:'%', u_s:' с', u_ms:'мс', u_sec:'с',
     snd_double:'Двойной тон', snd_triple:'Три коротких', snd_rising:'Нарастающий',
     snd_ping:'Одиночный пинг', snd_low:'Низкий гул', snd_alarm:'Тревога (агрессивный)',
@@ -918,6 +935,23 @@ function showFlash(label) {
 }
 
 const bTrackHoldEl = document.getElementById('bTrackHold');
+const trackWarn    = document.getElementById('trackWarn');
+
+// Переключение треков работает только с уже запущенным плеером —
+// AppleScript иначе сам открывает Spotify/Music, что неожиданно для пользователя
+let playerAvailable = false;
+async function pollPlayers() {
+  if (!chkTrack.checked) return;
+  try {
+    const p = await fetch('/api/players', {cache:'no-store'}).then(r => r.json());
+    playerAvailable = !!(p.spotify || p.music);
+  } catch (e) { playerAvailable = false; }
+  trackWarn.classList.toggle('hidden', playerAvailable);
+}
+setInterval(pollPlayers, 3000);
+chkTrack.addEventListener('change', () => {
+  if (chkTrack.checked) pollPlayers();
+});
 
 function checkTrack() {
   if (!chkTrack.checked || !baseline) return;
@@ -949,12 +983,14 @@ function checkTrack() {
         // recovery = hold + 500мс чтобы пережить обратное движение
         trackRecoverUntil = now + holdMs + 500;
         if (bTrackHoldEl) bTrackHoldEl.style.width = '0%';
-        if (dRollVal > 0) {
-          fetch('/api/media?action=next').catch(() => {});
-          showFlash('▶▶ NEXT');
-        } else {
-          fetch('/api/media?action=prev').catch(() => {});
-          showFlash('◀◀ PREV');
+        if (playerAvailable) {
+          if (dRollVal > 0) {
+            fetch('/api/media?action=next').catch(() => {});
+            showFlash('▶▶ NEXT');
+          } else {
+            fetch('/api/media?action=prev').catch(() => {});
+            showFlash('◀◀ PREV');
+          }
         }
       }
     }
