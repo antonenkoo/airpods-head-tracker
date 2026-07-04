@@ -1,0 +1,9 @@
+node_modules/
+certs/
+*.pem
+.DS_Store
+airpods-native/AirPodsTracker.app/
+*.dmg
+airpods-native/dmg-stage/
+airpods-native/AppIcon.icns
+airpods-native/AppIcon.png

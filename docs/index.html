@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirPods Head Tracker — real head tracking on your Mac</title>
+<meta name="description" content="Free macOS app that reads real head motion from AirPods Pro / Max: 3D visualization, posture monitoring and hands-free music control.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#121212;--card:#1e1e1e;--accent:#00ffaa;--blue:#33b5e5;--red:#ff4444;--dim:#888;--text:#fff}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.6}
+a{color:var(--accent)}
+.wrap{max-width:960px;margin:0 auto;padding:0 24px}
+
+/* Language switch */
+.lang{position:fixed;top:16px;right:20px;z-index:10;display:flex;gap:2px;
+  background:#1e1e1ecc;backdrop-filter:blur(10px);border:1px solid #333;border-radius:20px;padding:3px}
+.lang button{background:none;border:none;color:var(--dim);font-size:.8rem;font-weight:600;
+  padding:5px 12px;border-radius:16px;cursor:pointer}
+.lang button.on{background:var(--accent);color:#111}
+
+/* Hero */
+.hero{min-height:92vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:80px 24px 40px;position:relative;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 42%,rgba(0,255,170,.09),transparent 55%);pointer-events:none}
+h1{font-size:clamp(2rem,5vw,3.4rem);line-height:1.15;margin:26px 0 14px}
+h1 .grad{background:linear-gradient(90deg,var(--accent),var(--blue));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--dim);font-size:clamp(1rem,2vw,1.2rem);max-width:620px;margin-bottom:34px}
+.dl{display:inline-flex;flex-direction:column;align-items:center;gap:10px}
+.btn{display:inline-block;background:var(--accent);color:#111;font-weight:700;font-size:1.1rem;
+  padding:16px 42px;border-radius:30px;text-decoration:none;
+  box-shadow:0 8px 30px rgba(0,255,170,.35);transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,255,170,.5)}
+.dl small{color:var(--dim);font-size:.8rem}
+.free{display:inline-block;border:1px solid var(--accent);color:var(--accent);
+  font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  padding:4px 14px;border-radius:14px}
+
+/* Animated cube */
+.scene{width:150px;height:150px;perspective:520px;margin-top:8px}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;
+  animation:spin 14s linear infinite}
+@keyframes spin{
+  0%{transform:rotateX(-18deg) rotateY(0deg)}
+  25%{transform:rotateX(8deg) rotateY(100deg)}
+  50%{transform:rotateX(-25deg) rotateY(185deg)}
+  75%{transform:rotateX(5deg) rotateY(268deg)}
+  100%{transform:rotateX(-18deg) rotateY(360deg)}}
+.face{position:absolute;width:150px;height:150px;border:2px solid var(--accent);
+  background:rgba(0,255,170,.07);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--accent)}
+.f1{transform:rotateY(0deg) translateZ(75px);background:rgba(0,255,170,.16)}
+.f2{transform:rotateY(180deg) translateZ(75px)}
+.f3{transform:rotateY(90deg) translateZ(75px);border-color:var(--blue)}
+.f4{transform:rotateY(-90deg) translateZ(75px);border-color:var(--blue)}
+.f5{transform:rotateX(90deg) translateZ(75px)}
+.f6{transform:rotateX(-90deg) translateZ(75px)}
+
+/* Sections */
+section{padding:70px 0}
+h2{font-size:1.9rem;text-align:center;margin-bottom:14px}
+.lead{color:var(--dim);text-align:center;max-width:640px;margin:0 auto 44px}
+.shot{display:block;width:100%;max-width:860px;margin:0 auto;border-radius:14px;
+  border:1px solid #2c2c2c;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+.card{background:var(--card);border:1px solid #2a2a2a;border-radius:14px;padding:24px}
+.card .ico{font-size:1.7rem;margin-bottom:10px}
+.card h3{font-size:1.05rem;margin-bottom:8px;color:var(--accent)}
+.card p{font-size:.9rem;color:#bbb}
+
+/* Install steps */
+.steps{max-width:640px;margin:0 auto;counter-reset:step}
+.step{display:flex;gap:16px;margin-bottom:22px}
+.num{counter-increment:step;flex-shrink:0;width:34px;height:34px;border-radius:50%;
+  background:rgba(0,255,170,.12);border:1px solid var(--accent);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-weight:700}
+.num::before{content:counter(step)}
+.step p{color:#ccc;font-size:.95rem}
+.step code{background:#252525;border:1px solid #3a3a3a;border-radius:6px;
+  padding:2px 8px;font-size:.85rem;color:var(--accent);white-space:nowrap}
+.note{max-width:640px;margin:26px auto 0;background:rgba(255,170,0,.07);
+  border:1px solid rgba(255,170,0,.35);border-radius:12px;padding:16px 20px;font-size:.88rem;color:#ddc}
+.note b{color:#ffaa00}
+
+/* Requirements */
+.req{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+.req span{background:var(--card);border:1px solid #2e2e2e;border-radius:20px;
+  padding:8px 18px;font-size:.85rem;color:#ccc}
+
+footer{border-top:1px solid #222;padding:34px 0;text-align:center;color:var(--dim);font-size:.85rem}
+footer a{color:var(--dim)}
+</style>
+</head>
+<body>
+
+<div class="lang">
+  <button id="langEn" class="on" onclick="setLang('en')">EN</button>
+  <button id="langRu" onclick="setLang('ru')">RU</button>
+</div>
+
+<header class="hero">
+  <span class="free" data-i18n="free">Free & open source</span>
+  <h1><span class="grad">AirPods Head Tracker</span><br><span data-i18n="h1">for macOS</span></h1>
+  <p class="sub" data-i18n="sub">Real head tracking from your AirPods Pro / Max — right on your Mac.
+    3D visualization, posture monitoring and hands-free music control. No browser hacks: a native app
+    reads the motion sensors directly.</p>
+  <div class="dl">
+    <a class="btn" href="https://github.com/antonenkoo/airpods-head-tracker/releases/latest/download/AirPodsHeadTracker-1.0.0.dmg" data-i18n="dl">⬇ Download for Mac (.dmg)</a>
+    <small data-i18n="dlNote">macOS 14+ · Apple Silicon · 1.6 MB</small>
+  </div>
+  <div class="scene"><div class="cube">
+    <div class="face f1" data-i18n="face">FACE ☺</div><div class="face f2"></div>
+    <div class="face f3"></div><div class="face f4"></div>
+    <div class="face f5"></div><div class="face f6"></div>
+  </div></div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2 data-i18n="shotH">Everything in one window</h2>
+    <p class="lead" data-i18n="shotP">Put on your AirPods, launch the app — the cube mirrors your head in real time.</p>
+    <img class="shot" src="screenshot.png" alt="AirPods Head Tracker app window">
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 data-i18n="featH">What it does</h2>
+    <p class="lead" data-i18n="featP">Your AirPods already have motion sensors for Spatial Audio. This app puts them to work.</p>
+    <div class="grid">
+      <div class="card"><div class="ico">🧊</div><h3 data-i18n="f1h">Live 3D head tracking</h3>
+        <p data-i18n="f1p">Yaw, pitch and roll streamed from the headphones and rendered as a 3D cube with degree readouts.</p></div>
+      <div class="card"><div class="ico">🪑</div><h3 data-i18n="f2h">Posture monitor</h3>
+        <p data-i18n="f2p">Slouching towards the screen? The app notices your head tilting down and gently reminds you with a sound.</p></div>
+      <div class="card"><div class="ico">🎵</div><h3 data-i18n="f3h">Music by head gestures</h3>
+        <p data-i18n="f3p">Tilt your head to switch tracks in Spotify or Apple Music — hands stay on the keyboard.</p></div>
+      <div class="card"><div class="ico">🔊</div><h3 data-i18n="f4h">Volume by head motion</h3>
+        <p data-i18n="f4p">Optional: nod or turn to nudge the system volume up and down. Fully configurable thresholds.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 data-i18n="instH">Install in a minute</h2>
+    <div class="steps">
+      <div class="step"><div class="num"></div><p data-i18n="s1">Download the DMG and drag <b>AirPodsTracker</b> into <b>Applications</b>.</p></div>
+      <div class="step"><div class="num"></div><p data-i18n="s2">First launch: <b>right-click the app → Open → Open</b>. On macOS 15 also allow it in System Settings → Privacy & Security → “Open Anyway”.</p></div>
+      <div class="step"><div class="num"></div><p data-i18n="s3">Allow <b>Motion & Fitness</b> access when macOS asks — that’s the head-tracking sensor permission.</p></div>
+      <div class="step"><div class="num"></div><p data-i18n="s4">Put on your AirPods, look straight ahead and press <b>“Calibrate”</b>. Done.</p></div>
+    </div>
+    <div class="note"><b data-i18n="noteB">Why the warning on first launch?</b> <span data-i18n="noteT">The app is open source and signed without a paid Apple Developer ID, so Gatekeeper shows a one-time warning. If right-click → Open doesn’t help, run:</span>
+      <br><code>xattr -cr /Applications/AirPodsTracker.app</code></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2 data-i18n="reqH">Requirements</h2>
+    <div class="req">
+      <span data-i18n="r1">macOS 14 Sonoma or newer</span>
+      <span data-i18n="r2">AirPods Pro (1/2), AirPods Max, AirPods 3+</span>
+      <span data-i18n="r3">AirPods connected as audio output</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><a href="https://github.com/antonenkoo/airpods-head-tracker">GitHub</a> ·
+      <span data-i18n="foot">Built with CMHeadphoneMotionManager · MIT License</span></p>
+  </div>
+</footer>
+
+<script>
+const i18n = {
+  ru: {
+    free:"Бесплатно и с открытым кодом",
+    h1:"для macOS",
+    sub:"Настоящий head-tracking с AirPods Pro / Max — прямо на Mac. 3D-визуализация, контроль осанки и управление музыкой без рук. Никаких браузерных хаков: нативное приложение читает датчики движения напрямую.",
+    dl:"⬇ Скачать для Mac (.dmg)",
+    dlNote:"macOS 14+ · Apple Silicon · 1.6 МБ",
+    face:"ЛИЦО ☺",
+    shotH:"Всё в одном окне",
+    shotP:"Надень AirPods, запусти приложение — куб повторяет движения головы в реальном времени.",
+    featH:"Что умеет",
+    featP:"В AirPods уже есть датчики движения для Spatial Audio. Это приложение заставляет их работать.",
+    f1h:"3D-трекинг головы", f1p:"Yaw, pitch и roll идут с наушников и отображаются 3D-кубом с точными углами в градусах.",
+    f2h:"Монитор осанки", f2p:"Сутулишься к экрану? Приложение замечает наклон головы вниз и мягко напоминает звуком.",
+    f3h:"Музыка жестами головы", f3p:"Наклони голову — трек переключится в Spotify или Apple Music. Руки остаются на клавиатуре.",
+    f4h:"Громкость движением", f4p:"Опционально: кивком или поворотом регулируй системную громкость. Все пороги настраиваются.",
+    instH:"Установка за минуту",
+    s1:"Скачай DMG и перетащи AirPodsTracker в Applications.",
+    s2:"Первый запуск: правый клик по приложению → Open → Open. На macOS 15 дополнительно разреши в System Settings → Privacy & Security → «Open Anyway».",
+    s3:"Разреши доступ к «Движение и фитнес», когда macOS спросит — это разрешение на датчики head-tracking.",
+    s4:"Надень AirPods, посмотри прямо и нажми «Калибровать». Готово.",
+    noteB:"Почему предупреждение при первом запуске?",
+    noteT:"Приложение с открытым кодом и подписано без платного Apple Developer ID, поэтому Gatekeeper один раз покажет предупреждение. Если правый клик → Open не помог, выполни:",
+    reqH:"Требования",
+    r1:"macOS 14 Sonoma или новее",
+    r2:"AirPods Pro (1/2), AirPods Max, AirPods 3+",
+    r3:"AirPods подключены как аудиовыход",
+    foot:"Работает на CMHeadphoneMotionManager · Лицензия MIT"
+  }
+};
+const en = {};
+document.querySelectorAll('[data-i18n]').forEach(el => en[el.dataset.i18n] = el.innerHTML);
+i18n.en = en;
+
+function setLang(l) {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const t = i18n[l][el.dataset.i18n];
+    if (t !== undefined) el.innerHTML = t;
+  });
+  document.documentElement.lang = l;
+  document.getElementById('langEn').classList.toggle('on', l === 'en');
+  document.getElementById('langRu').classList.toggle('on', l === 'ru');
+  localStorage.setItem('lang', l);
+}
+const saved = localStorage.getItem('lang') ||
+  (navigator.language.startsWith('ru') ? 'ru' : 'en');
+if (saved !== 'en') setLang(saved);
+</script>
+</body>
+</html>

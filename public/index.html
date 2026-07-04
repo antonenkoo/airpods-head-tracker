@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Трекер положения головы</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 5px; text-align: center; color: #00ffaa; }
+        .subtitle { font-size: 0.9rem; color: #888; margin-bottom: 25px; text-align: center; max-width: 320px; }
+
+        .scene { width: 200px; height: 200px; perspective: 600px; margin-bottom: 30px; }
+        .cube {
+            width: 100%; height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.06s linear;
+        }
+        .face {
+            position: absolute; width: 200px; height: 200px;
+            border: 2px solid #00ffaa;
+            background: rgba(0, 255, 170, 0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.2rem;
+            box-sizing: border-box; border-radius: 20px;
+        }
+        .front  { transform: rotateY(  0deg) translateZ(100px); background: rgba(0, 255, 170, 0.2); color: #00ffaa; }
+        .back   { transform: rotateY(180deg) translateZ(100px); }
+        .right  { transform: rotateY( 90deg) translateZ(100px); border-color: #33b5e5; }
+        .left   { transform: rotateY(-90deg) translateZ(100px); border-color: #33b5e5; }
+        .top    { transform: rotateX( 90deg) translateZ(100px); }
+        .bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+        .data-panel {
+            background: #1e1e1e; padding: 20px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 100%; max-width: 300px;
+        }
+        .data-item { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 1.1rem; }
+        .data-item:last-child { margin-bottom: 0; }
+        .label { color: #aaa; }
+        .value { font-family: monospace; font-weight: bold; color: #fff; }
+
+        .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+        button {
+            border: none; padding: 12px 22px; font-size: 1rem; font-weight: bold;
+            border-radius: 25px; cursor: pointer;
+        }
+        .btn-permission { background-color: #00ffaa; color: #121212; box-shadow: 0 5px 15px rgba(0, 255, 170, 0.4); display: none; }
+        .btn-calibrate { background-color: #2a2a2a; color: #00ffaa; border: 1px solid #00ffaa; }
+        .status { font-size: 0.8rem; color: #666; margin-top: 18px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>Мониторинг положения</h1>
+    <div class="subtitle">Откройте на телефоне. Прикрепите его к оголовью наушников — куб повторит движения головы.</div>
+
+    <div class="controls">
+        <button class="btn-permission" id="permissionBtn">Включить датчики</button>
+        <button class="btn-calibrate" id="calibrateBtn">Обнулить (центр)</button>
+    </div>
+
+    <div class="scene">
+        <div class="cube" id="cube">
+            <div class="face front">ЛИЦО ☺</div>
+            <div class="face back">ЗАТЫЛОК</div>
+            <div class="face right">ПРАВО</div>
+            <div class="face left">ЛЕВО</div>
+            <div class="face top">ВЕРХ</div>
+            <div class="face bottom">НИЗ</div>
+        </div>
+    </div>
+
+    <div class="data-panel">
+        <div class="data-item"><span class="label">Yaw (Поворот Л/П):</span><span class="value" id="yaw">0°</span></div>
+        <div class="data-item"><span class="label">Pitch (Наклон В/Н):</span><span class="value" id="pitch">0°</span></div>
+        <div class="data-item"><span class="label">Roll (Крен Л/П):</span><span class="value" id="roll">0°</span></div>
+    </div>
+
+    <div class="status" id="status">Ожидание данных датчика…</div>
+
+    <script>
+        const cube = document.getElementById('cube');
+        const yawEl = document.getElementById('yaw');
+        const pitchEl = document.getElementById('pitch');
+        const rollEl = document.getElementById('roll');
+        const statusEl = document.getElementById('status');
+        const permissionBtn = document.getElementById('permissionBtn');
+        const calibrateBtn = document.getElementById('calibrateBtn');
+
+        let receivedData = false; // пришло ли хоть одно событие датчика
+
+        // Смещение калибровки (нулевая точка)
+        const offset = { alpha: 0, beta: 0, gamma: 0 };
+        let last = { alpha: 0, beta: 0, gamma: 0 };
+        // Сглаженные значения для плавной анимации
+        let smooth = { alpha: 0, beta: 0, gamma: 0 };
+        const SMOOTHING = 0.2; // 0..1, больше — резче
+
+        function norm180(v) {
+            // Приводим угол к диапазону [-180, 180]
+            while (v > 180) v -= 360;
+            while (v < -180) v += 360;
+            return v;
+        }
+
+        function handleOrientation(event) {
+            if (event.alpha === null && event.beta === null && event.gamma === null) return;
+            receivedData = true;
+
+            last.alpha = event.alpha || 0;
+            last.beta = event.beta || 0;
+            last.gamma = event.gamma || 0;
+
+            let alpha = norm180(last.alpha - offset.alpha);
+            let beta = norm180(last.beta - offset.beta);
+            let gamma = norm180(last.gamma - offset.gamma);
+
+            // Экспоненциальное сглаживание
+            smooth.alpha += (alpha - smooth.alpha) * SMOOTHING;
+            smooth.beta += (beta - smooth.beta) * SMOOTHING;
+            smooth.gamma += (gamma - smooth.gamma) * SMOOTHING;
+
+            yawEl.textContent = smooth.alpha.toFixed(1) + '°';
+            pitchEl.textContent = smooth.beta.toFixed(1) + '°';
+            rollEl.textContent = smooth.gamma.toFixed(1) + '°';
+
+            cube.style.transform =
+                `rotateX(${-smooth.beta}deg) rotateY(${-smooth.alpha}deg) rotateZ(${smooth.gamma}deg)`;
+
+            statusEl.textContent = 'Датчик активен ✔';
+            statusEl.style.color = '#00ffaa';
+        }
+
+        calibrateBtn.addEventListener('click', () => {
+            // Текущее положение делаем новым нулём
+            offset.alpha = last.alpha;
+            offset.beta = last.beta;
+            offset.gamma = last.gamma;
+            smooth = { alpha: 0, beta: 0, gamma: 0 };
+        });
+
+        function startListening() {
+            window.addEventListener('deviceorientation', handleOrientation);
+            // Диагностика: если за 2 сек ни одного события — датчика нет
+            setTimeout(() => {
+                if (!receivedData) {
+                    statusEl.innerHTML =
+                        '⚠️ Датчик ориентации не отвечает.<br>' +
+                        'Похоже, страница открыта на устройстве без гироскопа ' +
+                        '(обычный ноутбук/ПК). Откройте её на <b>телефоне</b>.<br>' +
+                        '<span style="color:#666">AirPods сюда данные не передают — ' +
+                        'их head-tracking из браузера недоступен.</span>';
+                    statusEl.style.color = '#ffaa00';
+                }
+            }, 2000);
+        }
+
+        function initSensors() {
+            const needsPermission =
+                typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function';
+
+            if (needsPermission) {
+                // iOS 13+: доступ только по явному тапу пользователя
+                permissionBtn.style.display = 'block';
+                statusEl.textContent = 'Нажмите «Включить датчики» и разрешите доступ.';
+                permissionBtn.addEventListener('click', () => {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                startListening();
+                                permissionBtn.style.display = 'none';
+                            } else {
+                                statusEl.textContent = 'Доступ к датчикам отклонён.';
+                                statusEl.style.color = '#ff5555';
+                            }
+                        })
+                        .catch(err => {
+                            statusEl.textContent = 'Ошибка запроса доступа: ' + err;
+                            statusEl.style.color = '#ff5555';
+                        });
+                });
+            } else {
+                // Android / десктоп
+                startListening();
+            }
+        }
+
+        window.addEventListener('load', initSensors);
+    </script>
+</body>
+</html>
