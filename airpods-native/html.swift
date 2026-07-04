@@ -4,7 +4,7 @@ let indexHTML = """
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AirPods · Осанка</title>
+<title>AirPods · Posture</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -33,16 +33,23 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
   perspective:calc(var(--cs)*3.5);flex-shrink:0;overflow:visible}
 .cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;will-change:transform}
 .face{position:absolute;width:var(--cs);height:var(--cs);
-  border:3px solid var(--accent);background:rgba(0,255,170,.07);
+  --fc:var(--accent);
+  border:2px solid var(--fc);background:rgba(0,255,170,.07);
   display:flex;align-items:center;justify-content:center;
   font-weight:bold;font-size:calc(var(--cs)*0.06);border-radius:calc(var(--cs)*0.09);
-  /* свечение придаёт рёбрам объём — грань не исчезает, встав ребром */
-  box-shadow:0 0 10px rgba(0,255,170,.4),inset 0 0 12px rgba(0,255,170,.22)}
-.right,.left{box-shadow:0 0 10px rgba(51,181,229,.4),inset 0 0 12px rgba(51,181,229,.22)}
+  transform-style:preserve-3d;
+  box-shadow:0 0 8px rgba(0,255,170,.28)}
+.right,.left{box-shadow:0 0 8px rgba(51,181,229,.28)}
+/* Псевдослои ±2px по Z дают рёбрам настоящую толщину: грань, встав ребром,
+   остаётся видимой линией, а не рассыпается в пиксели */
+.face::before,.face::after{content:"";position:absolute;inset:-2px;
+  border:2px solid var(--fc);border-radius:inherit;pointer-events:none}
+.face::before{transform:translateZ(2.2px)}
+.face::after{transform:translateZ(-2.2px)}
 .front{transform:rotateY(0deg)   translateZ(calc(var(--cs)/2));background:rgba(0,255,170,.16);color:var(--accent)}
 .back {transform:rotateY(180deg) translateZ(calc(var(--cs)/2))}
-.right{transform:rotateY(90deg)  translateZ(calc(var(--cs)/2));border-color:var(--blue)}
-.left {transform:rotateY(-90deg) translateZ(calc(var(--cs)/2));border-color:var(--blue)}
+.right{transform:rotateY(90deg)  translateZ(calc(var(--cs)/2));--fc:var(--blue)}
+.left {transform:rotateY(-90deg) translateZ(calc(var(--cs)/2));--fc:var(--blue)}
 .top  {transform:rotateX(90deg)  translateZ(calc(var(--cs)/2))}
 .bottom{transform:rotateX(-90deg)translateZ(calc(var(--cs)/2))}
 
@@ -97,8 +104,17 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
   background:var(--accent)}
 .toggle-row input[type=checkbox]:checked::before,.sg input[type=checkbox]:checked::before{
   transform:translateX(14px);background:#111}
-.sub-settings{padding-left:22px;display:flex;flex-direction:column;gap:5px}
-.sub-settings.hidden{display:none}
+.sub-settings{padding-left:22px;display:flex;flex-direction:column;gap:5px;
+  overflow:hidden;max-height:400px;opacity:1;
+  transition:max-height .35s ease,opacity .28s ease,margin .35s ease}
+.sub-settings.hidden{max-height:0;opacity:0;margin-top:-8px;pointer-events:none}
+
+/* Переключатель языка */
+.lang-sw{display:flex;gap:2px;background:#1e1e1e;border:1px solid #333;
+  border-radius:14px;padding:2px;flex-shrink:0}
+.lang-sw button{flex:none;min-width:0;background:none;border:none;color:var(--dim);
+  font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:11px;cursor:pointer}
+.lang-sw button.on{background:var(--accent);color:#111}
 
 /* Настройки-сетка */
 .sg{display:grid;grid-template-columns:1fr auto auto;gap:5px 8px;align-items:center}
@@ -222,10 +238,16 @@ button:active{opacity:.65}
 
   <header>
     <div>
-      <h1>🎧 AirPods · Осанка</h1>
-      <div class="subtitle">Сядь прямо → «Калибровать» → носи с AirPods в ушах</div>
+      <h1>🎧 <span data-i18n="title">AirPods · Posture</span></h1>
+      <div class="subtitle" data-i18n="subtitle">Sit straight → “Calibrate” → wear your AirPods</div>
     </div>
-    <div class="conn warn" id="conn">Подключение…</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="conn warn" id="conn">Connecting…</div>
+      <div class="lang-sw">
+        <button id="langEn" class="on">EN</button>
+        <button id="langRu">RU</button>
+      </div>
+    </div>
   </header>
 
   <div class="left-col">
@@ -234,37 +256,33 @@ button:active{opacity:.65}
       <div class="scene-wrap">
         <div class="scene">
           <div class="cube" id="cube">
-            <div class="face front">ЛИЦО ☺</div>
-            <div class="face back">ЗАТЫЛОК</div>
-            <div class="face right">ПРАВО</div>
-            <div class="face left">ЛЕВО</div>
-            <div class="face top">ВЕРХ</div>
-            <div class="face bottom">НИЗ</div>
+            <div class="face front" data-i18n="faceFront">FACE ☺</div>
+            <div class="face back"></div>
+            <div class="face right"></div>
+            <div class="face left"></div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title">Положение головы</div>
+        <div class="card-title" data-i18n="cardHead">Head position</div>
         <div class="angles">
-          <div><div class="angle-val" id="yaw">0°</div><div class="angle-lbl">Yaw Л/П</div></div>
-          <div><div class="angle-val" id="pitch">0°</div><div class="angle-lbl">Pitch В/Н</div></div>
-          <div><div class="angle-val" id="roll">0°</div><div class="angle-lbl">Roll крен</div></div>
+          <div><div class="angle-val" id="yaw">0°</div><div class="angle-lbl" data-i18n="lblYaw">Yaw L/R</div></div>
+          <div><div class="angle-val" id="pitch">0°</div><div class="angle-lbl" data-i18n="lblPitch">Pitch U/D</div></div>
+          <div><div class="angle-val" id="roll">0°</div><div class="angle-lbl" data-i18n="lblRoll">Roll tilt</div></div>
         </div>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn-primary" id="btnCalib">Калибровать</button>
       </div>
     </div><!-- /left-top -->
 
     <div class="left-bot">
     <!-- Осанка -->
     <div class="card graph-card">
-      <div class="card-title">Осанка</div>
+      <div class="card-title" data-i18n="cardPosture">Posture</div>
       <div class="posture-row">
         <div class="dot idle" id="dot"></div>
-        <span class="posture-lbl" id="postureLbl">Не откалибровано</span>
+        <span class="posture-lbl" id="postureLbl">Not calibrated</span>
         <span class="posture-timer" id="postureTimer"></span>
       </div>
       <svg id="postureGraph" viewBox="0 0 180 186"
@@ -286,10 +304,10 @@ button:active{opacity:.65}
         <line x1="90" y1="6"  x2="90"  y2="174" stroke="#303030" stroke-width="1.5"/>
         <line x1="6"  y1="90" x2="174" y2="90"  stroke="#303030" stroke-width="1.5"/>
         <!-- axis labels -->
-        <text x="94" y="17"  fill="#404040" font-size="7" font-family="monospace">вперёд</text>
-        <text x="94" y="172" fill="#404040" font-size="7" font-family="monospace">назад</text>
-        <text x="9"  y="94"  fill="#404040" font-size="7" font-family="monospace">Л</text>
-        <text x="161" y="94" fill="#404040" font-size="7" font-family="monospace">П</text>
+        <text x="94" y="17"  fill="#404040" font-size="7" font-family="monospace" data-i18n="axFwd">fwd</text>
+        <text x="94" y="172" fill="#404040" font-size="7" font-family="monospace" data-i18n="axBack">back</text>
+        <text x="9"  y="94"  fill="#404040" font-size="7" font-family="monospace" data-i18n="axL">L</text>
+        <text x="161" y="94" fill="#404040" font-size="7" font-family="monospace" data-i18n="axR">R</text>
         <!-- safe-zone ellipse -->
         <ellipse id="thEllipse" cx="90" cy="90" rx="38" ry="38"
           fill="rgba(0,255,170,0.05)" stroke="#00ffaa44" stroke-width="1.5" stroke-dasharray="5,3"/>
@@ -311,94 +329,94 @@ button:active{opacity:.65}
 
     <!-- Музыка -->
     <div class="card">
-      <div class="card-title">Музыка</div>
+      <div class="card-title" data-i18n="cardMusic">Music</div>
       <div class="music-section">
 
         <div class="toggle-row">
           <input type="checkbox" id="chkTrack">
-          <label for="chkTrack">Переключение треков (крен головы)</label>
+          <label for="chkTrack" data-i18n="chkTrackLbl">Track switching (head tilt)</label>
         </div>
-        <div class="sub-settings" id="trackSub">
+        <div class="sub-settings hidden" id="trackSub">
           <div class="sg">
-            <label>Порог крена</label>
+            <label data-i18n="thTilt">Tilt threshold</label>
             <input type="range" id="slTrackTh" min="5" max="60" value="25">
             <span class="val" id="lblTrackTh">25°</span>
           </div>
           <div class="sg">
-            <label>Задержка срабатывания</label>
+            <label data-i18n="holdDelay">Hold delay</label>
             <input type="range" id="slTrackHold" min="100" max="1500" step="50" value="600">
-            <span class="val" id="lblTrackHold">600мс</span>
+            <span class="val" id="lblTrackHold">600ms</span>
           </div>
           <!-- live крен + статус -->
           <div class="bar-row" style="margin-top:4px">
-            <span class="bar-name">Крен</span>
+            <span class="bar-name" data-i18n="barTilt">Tilt</span>
             <div class="bar-track"><div class="bar-fill" id="bTrackRoll" style="width:0%"></div></div>
             <span class="bar-val" id="dTrackRoll">0°</span>
           </div>
           <div class="bar-row" style="margin-top:2px">
-            <span class="bar-name" style="color:#555">заряд</span>
+            <span class="bar-name" style="color:#555" data-i18n="charge">charge</span>
             <div class="bar-track"><div class="bar-fill" id="bTrackHold" style="width:0%;background:var(--accent)"></div></div>
             <span id="trackStatus" style="font-size:.7rem;color:var(--accent);font-family:monospace;min-width:38px;text-align:right"></span>
           </div>
-          <div style="font-size:.7rem;color:#444;margin-top:2px">⚠ При первом запуске macOS попросит разрешение — разреши</div>
+          <div style="font-size:.7rem;color:#444;margin-top:2px" data-i18n="permNote">⚠ On first use macOS will ask for permission — allow it</div>
         </div>
 
         <div class="toggle-row" style="margin-top:4px">
           <input type="checkbox" id="chkPitchVol">
-          <label for="chkPitchVol">Громкость ↓ при наклоне головы (Pitch)</label>
+          <label for="chkPitchVol" data-i18n="chkPitchVolLbl">Volume ↓ on head pitch</label>
         </div>
         <div class="sub-settings hidden" id="pitchVolSub">
           <div class="sg">
-            <label>Порог наклона</label>
+            <label data-i18n="thPitch">Pitch threshold</label>
             <input type="range" id="slPitchVolTh" min="5" max="60" value="20">
             <span class="val" id="lblPitchVolTh">20°</span>
-            <label>Задержка срабатывания</label>
+            <label data-i18n="holdDelay">Hold delay</label>
             <input type="range" id="slPitchVolHold" min="100" max="1500" step="50" value="400">
-            <span class="val" id="lblPitchVolHold">400мс</span>
+            <span class="val" id="lblPitchVolHold">400ms</span>
           </div>
           <div class="bar-row" style="margin-top:4px">
-            <span class="bar-name">Наклон</span>
+            <span class="bar-name" data-i18n="barPitch">Pitch</span>
             <div class="bar-track"><div class="bar-fill" id="bPitchVol" style="width:0%"></div></div>
             <span class="bar-val" id="dPitchVol">0°</span>
           </div>
           <div class="bar-row" style="margin-top:2px">
-            <span class="bar-name" style="color:#555">заряд</span>
+            <span class="bar-name" style="color:#555" data-i18n="charge">charge</span>
             <div class="bar-track"><div class="bar-fill" id="bPitchVolHold" style="width:0%;background:var(--blue)"></div></div>
             <span id="pitchVolStatus" style="font-size:.7rem;font-family:monospace;min-width:38px;text-align:right"></span>
           </div>
-          <div style="font-size:.7rem;color:#555;margin-top:2px">Уровни снижения и фейд — общие с Yaw</div>
+          <div style="font-size:.7rem;color:#555;margin-top:2px" data-i18n="sharedNote">Reduction and fade settings are shared with Yaw</div>
         </div>
 
         <div class="toggle-row" style="margin-top:4px">
           <input type="checkbox" id="chkYawVol">
-          <label for="chkYawVol">Громкость ↓ при повороте головы (Yaw)</label>
+          <label for="chkYawVol" data-i18n="chkYawVolLbl">Volume ↓ on head turn (Yaw)</label>
         </div>
-        <div class="sub-settings" id="yawSub">
+        <div class="sub-settings hidden" id="yawSub">
           <div class="sg">
-            <label>Порог поворота</label>
+            <label data-i18n="thTurn">Turn threshold</label>
             <input type="range" id="slYawTh" min="5" max="90" value="20">
             <span class="val" id="lblYawTh">20°</span>
-            <label>Задержка срабатывания</label>
+            <label data-i18n="holdDelay">Hold delay</label>
             <input type="range" id="slYawHold" min="100" max="1500" step="50" value="400">
-            <span class="val" id="lblYawHold">400мс</span>
-            <label>Снижение громкости</label>
+            <span class="val" id="lblYawHold">400ms</span>
+            <label data-i18n="volReduction">Volume reduction</label>
             <input type="range" id="slYawRed" min="10" max="100" value="70">
             <span class="val" id="lblYawRed">70%</span>
-            <label>Нормальная громкость</label>
+            <label data-i18n="normalVolume">Normal volume</label>
             <input type="range" id="slNormVol" min="0" max="100" value="70">
             <span class="val" id="lblNormVol">70%</span>
-            <label>Фейд громкости</label>
+            <label data-i18n="volumeFade">Volume fade</label>
             <input type="range" id="slFade" min="1" max="10" value="3">
-            <span class="val" id="lblFade">3 с</span>
+            <span class="val" id="lblFade">3 s</span>
           </div>
           <!-- live yaw -->
           <div class="bar-row" style="margin-top:4px">
-            <span class="bar-name">Поворот</span>
+            <span class="bar-name" data-i18n="barTurn">Turn</span>
             <div class="bar-track"><div class="bar-fill" id="bYaw" style="width:0%"></div></div>
             <span class="bar-val" id="dYaw">0°</span>
           </div>
           <div class="bar-row" style="margin-top:2px">
-            <span class="bar-name" style="color:#555">заряд</span>
+            <span class="bar-name" style="color:#555" data-i18n="charge">charge</span>
             <div class="bar-track"><div class="bar-fill" id="bYawHold" style="width:0%;background:var(--blue)"></div></div>
             <span id="yawStatus" style="font-size:.7rem;font-family:monospace;min-width:38px;text-align:right"></span>
           </div>
@@ -409,45 +427,47 @@ button:active{opacity:.65}
 
     <!-- Настройки осанки + звук -->
     <div class="card">
-      <div class="card-title">Настройки осанки и звука</div>
+      <div class="card-title" data-i18n="cardSettings">Posture & sound settings</div>
       <div class="sg">
-        <label>Порог наклона вперёд (Pitch)</label>
+        <label data-i18n="thForward">Forward lean threshold (Pitch)</label>
         <input type="range" id="slPitch" min="3" max="90" value="15">
         <span class="val" id="lblPitch">15°</span>
 
-        <label>Порог крена (Roll)</label>
+        <label data-i18n="thRoll">Tilt threshold (Roll)</label>
         <input type="range" id="slRoll" min="3" max="60" value="10">
         <span class="val" id="lblRoll">10°</span>
 
-        <label>Задержка перед сигналом</label>
+        <label data-i18n="alertDelay">Delay before alert</label>
         <input type="range" id="slDelay" min="0" max="30" value="5">
-        <span class="val" id="lblDelay">5 с</span>
+        <span class="val" id="lblDelay">5 s</span>
 
-        <label>Пауза между сигналами</label>
+        <label data-i18n="alertCooldown">Pause between alerts</label>
         <input type="range" id="slCooldown" min="5" max="300" value="60">
-        <span class="val" id="lblCooldown">60 с</span>
+        <span class="val" id="lblCooldown">60 s</span>
 
-        <label>Звук</label>
+        <label data-i18n="soundLbl">Sound</label>
         <input type="checkbox" id="chkSound" checked>
         <span></span>
 
-        <label>Громкость сигнала</label>
+        <label data-i18n="alertVolume">Alert volume</label>
         <input type="range" id="slVol" min="0" max="100" value="70">
         <span class="val" id="lblVol">70%</span>
 
-        <label class="full">Тип сигнала</label>
+        <label class="full" data-i18n="alertType">Alert sound</label>
         <div class="cselect" id="selSoundBox">
           <div class="cselect-btn">
-            <span id="selSoundLbl">Двойной тон</span>
+            <span id="selSoundLbl">Double tone</span>
             <span class="cselect-arr">▼</span>
           </div>
           <div class="cselect-list" id="selSoundList"></div>
         </div>
+
+        <button class="btn-muted full" id="btnTestSound" data-i18n="btnTest">Test sound</button>
       </div>
     </div>
 
     <div class="btn-row">
-      <button class="btn-muted" id="btnTestSound">🔊 Тест звука</button>
+      <button class="btn-primary" id="btnCalib" data-i18n="btnCalib">Calibrate</button>
     </div>
 
   </div><!-- /right-col -->
@@ -457,6 +477,72 @@ button:active{opacity:.65}
 <div class="track-flash" id="trackFlash"></div>
 
 <script>
+// ── i18n ────────────────────────────────────────────────────────────────
+const L = {
+  en: {
+    title:'AirPods · Posture',
+    subtitle:'Sit straight → “Calibrate” → wear your AirPods',
+    faceFront:'FACE ☺',
+    cardHead:'Head position', lblYaw:'Yaw L/R', lblPitch:'Pitch U/D', lblRoll:'Roll tilt',
+    cardPosture:'Posture', notCalibrated:'Not calibrated',
+    axFwd:'fwd', axBack:'back', axL:'L', axR:'R',
+    cardMusic:'Music',
+    chkTrackLbl:'Track switching (head tilt)',
+    thTilt:'Tilt threshold', holdDelay:'Hold delay', barTilt:'Tilt', charge:'charge',
+    permNote:'⚠ On first use macOS will ask for permission — allow it',
+    chkPitchVolLbl:'Volume ↓ on head pitch', thPitch:'Pitch threshold', barPitch:'Pitch',
+    sharedNote:'Reduction and fade settings are shared with Yaw',
+    chkYawVolLbl:'Volume ↓ on head turn (Yaw)', thTurn:'Turn threshold',
+    volReduction:'Volume reduction', normalVolume:'Normal volume', volumeFade:'Volume fade', barTurn:'Turn',
+    cardSettings:'Posture & sound settings',
+    thForward:'Forward lean threshold (Pitch)', thRoll:'Tilt threshold (Roll)',
+    alertDelay:'Delay before alert', alertCooldown:'Pause between alerts',
+    soundLbl:'Sound', alertVolume:'Alert volume', alertType:'Alert sound',
+    btnTest:'Test sound', btnCalib:'Calibrate',
+    noData:'No data from AirPods', calibrated:'Calibrated — sit straight!',
+    postureOk:'Posture OK', checking:'Checking…', fixPosture:'⚠ Fix your posture!',
+    pause:'⏳ pause', hold:'hold…', ready:'ready', quiet:'🔇 quiet',
+    connOk:'AirPods active ✔', connLost:'AirPods lost…',
+    connWait:'Waiting for AirPods — put them in', connErr:'No connection: ',
+    u_deg:'°', u_pct:'%', u_s:' s', u_ms:'ms', u_sec:'s',
+    snd_double:'Double tone', snd_triple:'Three short', snd_rising:'Rising',
+    snd_ping:'Single ping', snd_low:'Low hum', snd_alarm:'Alarm (aggressive)',
+    snd_siren:'Siren', snd_rapid:'Rapid beeper', snd_harsh:'Harsh horn', snd_klaxon:'Klaxon',
+  },
+  ru: {
+    title:'AirPods · Осанка',
+    subtitle:'Сядь прямо → «Калибровать» → носи с AirPods в ушах',
+    faceFront:'ЛИЦО ☺',
+    cardHead:'Положение головы', lblYaw:'Yaw Л/П', lblPitch:'Pitch В/Н', lblRoll:'Roll крен',
+    cardPosture:'Осанка', notCalibrated:'Не откалибровано',
+    axFwd:'вперёд', axBack:'назад', axL:'Л', axR:'П',
+    cardMusic:'Музыка',
+    chkTrackLbl:'Переключение треков (крен головы)',
+    thTilt:'Порог крена', holdDelay:'Задержка срабатывания', barTilt:'Крен', charge:'заряд',
+    permNote:'⚠ При первом запуске macOS попросит разрешение — разреши',
+    chkPitchVolLbl:'Громкость ↓ при наклоне головы (Pitch)', thPitch:'Порог наклона', barPitch:'Наклон',
+    sharedNote:'Уровни снижения и фейд — общие с Yaw',
+    chkYawVolLbl:'Громкость ↓ при повороте головы (Yaw)', thTurn:'Порог поворота',
+    volReduction:'Снижение громкости', normalVolume:'Нормальная громкость', volumeFade:'Фейд громкости', barTurn:'Поворот',
+    cardSettings:'Настройки осанки и звука',
+    thForward:'Порог наклона вперёд (Pitch)', thRoll:'Порог крена (Roll)',
+    alertDelay:'Задержка перед сигналом', alertCooldown:'Пауза между сигналами',
+    soundLbl:'Звук', alertVolume:'Громкость сигнала', alertType:'Тип сигнала',
+    btnTest:'Тест звука', btnCalib:'Калибровать',
+    noData:'Нет данных с AirPods', calibrated:'Откалибровано — сиди прямо!',
+    postureOk:'Осанка OK', checking:'Проверяю…', fixPosture:'⚠ Выправи осанку!',
+    pause:'⏳ пауза', hold:'держи…', ready:'готов', quiet:'🔇 тихо',
+    connOk:'AirPods активны ✔', connLost:'AirPods потеряны…',
+    connWait:'Жду AirPods — надень наушники', connErr:'Нет связи: ',
+    u_deg:'°', u_pct:'%', u_s:' с', u_ms:'мс', u_sec:'с',
+    snd_double:'Двойной тон', snd_triple:'Три коротких', snd_rising:'Нарастающий',
+    snd_ping:'Одиночный пинг', snd_low:'Низкий гул', snd_alarm:'Тревога (агрессивный)',
+    snd_siren:'Сирена', snd_rapid:'Бипер (быстрый)', snd_harsh:'Жёсткий гудок', snd_klaxon:'Клаксон',
+  },
+};
+let lang = localStorage.getItem('lang') || 'en';
+const t = k => L[lang][k] ?? k;
+
 // ── DOM refs ────────────────────────────────────────────────────────────
 const cube       = document.getElementById('cube');
 const yawEl      = document.getElementById('yaw');
@@ -481,12 +567,14 @@ const bYaw        = document.getElementById('bYaw');
 const dYaw        = document.getElementById('dYaw');
 const yawStatus   = document.getElementById('yawStatus');
 
-// ── Слайдеры ────────────────────────────────────────────────────────────
-function bind(id, lblId, suffix) {
+// ── Слайдеры (суффиксы — ключи i18n, обновляются при смене языка) ──────
+const sliderUpds = [];
+function bind(id, lblId, unitKey) {
   const el  = document.getElementById(id);
   const lbl = document.getElementById(lblId);
-  const upd = () => lbl.textContent = el.value + suffix;
+  const upd = () => lbl.textContent = el.value + t(unitKey);
   el.addEventListener('input', upd); upd();
+  sliderUpds.push(upd);
   return el;
 }
 function bindMs(id, lblId) {
@@ -494,25 +582,26 @@ function bindMs(id, lblId) {
   const lbl = document.getElementById(lblId);
   const upd = () => {
     const ms = Number(el.value);
-    lbl.textContent = ms < 1000 ? ms + 'мс' : (ms/1000).toFixed(1) + 'с';
+    lbl.textContent = ms < 1000 ? ms + t('u_ms') : (ms/1000).toFixed(1) + t('u_sec');
   };
   el.addEventListener('input', upd); upd();
+  sliderUpds.push(upd);
   return el;
 }
-const slPitch      = bind('slPitch',      'lblPitch',     '°');
-const slRoll       = bind('slRoll',       'lblRoll',      '°');
-const slDelay      = bind('slDelay',      'lblDelay',     ' с');
-const slCooldown   = bind('slCooldown',   'lblCooldown',  ' с');
-const slVol        = bind('slVol',        'lblVol',       '%');
-const slTrackTh      = bind('slTrackTh',      'lblTrackTh',     '°');
+const slPitch      = bind('slPitch',      'lblPitch',     'u_deg');
+const slRoll       = bind('slRoll',       'lblRoll',      'u_deg');
+const slDelay      = bind('slDelay',      'lblDelay',     'u_s');
+const slCooldown   = bind('slCooldown',   'lblCooldown',  'u_s');
+const slVol        = bind('slVol',        'lblVol',       'u_pct');
+const slTrackTh      = bind('slTrackTh',      'lblTrackTh',     'u_deg');
 const slTrackHold    = bindMs('slTrackHold',  'lblTrackHold');
-const slPitchVolTh   = bind('slPitchVolTh',   'lblPitchVolTh',  '°');
+const slPitchVolTh   = bind('slPitchVolTh',   'lblPitchVolTh',  'u_deg');
 const slPitchVolHold = bindMs('slPitchVolHold','lblPitchVolHold');
-const slYawTh        = bind('slYawTh',        'lblYawTh',       '°');
+const slYawTh        = bind('slYawTh',        'lblYawTh',       'u_deg');
 const slYawHold    = bindMs('slYawHold',  'lblYawHold');
-const slYawRed     = bind('slYawRed',     'lblYawRed',    '%');
-const slNormVol    = bind('slNormVol',    'lblNormVol',   '%');
-const slFade       = bind('slFade',       'lblFade',      ' с');
+const slYawRed     = bind('slYawRed',     'lblYawRed',    'u_pct');
+const slNormVol    = bind('slNormVol',    'lblNormVol',   'u_pct');
+const slFade       = bind('slFade',       'lblFade',      'u_s');
 
 const chkSound     = document.getElementById('chkSound');
 const chkTrack     = document.getElementById('chkTrack');
@@ -520,30 +609,26 @@ const chkPitchVol  = document.getElementById('chkPitchVol');
 const chkYawVol    = document.getElementById('chkYawVol');
 
 // ── Кастомный селект типа сигнала ──────────────────────────────────────
-const SOUND_NAMES = {
-  double: 'Двойной тон',    triple: 'Три коротких',
-  rising: 'Нарастающий',    ping:   'Одиночный пинг',
-  low:    'Низкий гул',     alarm:  'Тревога (агрессивный)',
-  siren:  'Сирена',         rapid:  'Бипер (быстрый)',
-  harsh:  'Жёсткий гудок',  klaxon: 'Клаксон',
-};
+const SOUND_KEYS = ['double','triple','rising','ping','low','alarm','siren','rapid','harsh','klaxon'];
 const selSound = { value: 'double' };   // тот же интерфейс, что у <select>
 const selSoundBox  = document.getElementById('selSoundBox');
 const selSoundLbl  = document.getElementById('selSoundLbl');
 const selSoundList = document.getElementById('selSoundList');
-for (const [val, name] of Object.entries(SOUND_NAMES)) {
+const soundOptEls  = new Map();
+for (const val of SOUND_KEYS) {
   const opt = document.createElement('div');
   opt.className = 'cselect-opt' + (val === selSound.value ? ' sel' : '');
-  opt.textContent = name;
+  opt.textContent = t('snd_' + val);
   opt.addEventListener('click', e => {
     e.stopPropagation();
     selSound.value = val;
-    selSoundLbl.textContent = name;
+    selSoundLbl.textContent = t('snd_' + val);
     selSoundList.querySelectorAll('.sel').forEach(o => o.classList.remove('sel'));
     opt.classList.add('sel');
     selSoundBox.classList.remove('open');
     playAlert(); // сразу дать послушать выбранный сигнал
   });
+  soundOptEls.set(val, opt);
   selSoundList.appendChild(opt);
 }
 selSoundBox.querySelector('.cselect-btn').addEventListener('click', () =>
@@ -551,6 +636,27 @@ selSoundBox.querySelector('.cselect-btn').addEventListener('click', () =>
 document.addEventListener('click', e => {
   if (!selSoundBox.contains(e.target)) selSoundBox.classList.remove('open');
 });
+
+// ── Переключение языка ─────────────────────────────────────────────────
+const langEnBtn = document.getElementById('langEn');
+const langRuBtn = document.getElementById('langRu');
+function setLang(l) {
+  lang = l; localStorage.setItem('lang', l);
+  document.documentElement.lang = l;
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const s = L[lang][el.dataset.i18n];
+    if (s !== undefined) el.textContent = s;
+  });
+  soundOptEls.forEach((el, val) => el.textContent = t('snd_' + val));
+  selSoundLbl.textContent = t('snd_' + selSound.value);
+  sliderUpds.forEach(f => f());
+  if (!baseline) postureLbl.textContent = t('notCalibrated');
+  langEnBtn.classList.toggle('on', l === 'en');
+  langRuBtn.classList.toggle('on', l === 'ru');
+}
+langEnBtn.addEventListener('click', () => setLang('en'));
+langRuBtn.addEventListener('click', () => setLang('ru'));
 
 // показывать/скрывать sub-settings
 function syncSub(chk, sub) {
@@ -685,7 +791,7 @@ document.getElementById('btnTestSound').addEventListener('click', playAlert);
 
 // ── Калибровка (заодно обнуляет вид куба) ──────────────────────────────
 document.getElementById('btnCalib').addEventListener('click', () => {
-  if (!gotData) { postureLbl.textContent = 'Нет данных с AirPods'; return; }
+  if (!gotData) { postureLbl.textContent = t('noData'); return; }
   viewOff  = {yaw:last.yaw, pitch:last.pitch, roll:last.roll};
   baseline = {yaw:last.yaw, pitch:last.pitch, roll:last.roll};
   badSince = null; lastAlert = -Infinity;
@@ -704,9 +810,9 @@ document.getElementById('btnCalib').addEventListener('click', () => {
   const bYawHold = document.getElementById('bYawHold');
   if (bYawHold) bYawHold.style.width = '0%';
   dot.className = 'dot good';
-  postureLbl.textContent = 'Откалибровано — сиди прямо!';
+  postureLbl.textContent = t('calibrated');
   postureTimer.textContent = '';
-  setTimeout(() => { if (postureLbl.textContent.startsWith('Откалибровано')) postureLbl.textContent='Осанка OK'; }, 2000);
+  setTimeout(() => { if (postureLbl.textContent === t('calibrated')) postureLbl.textContent = t('postureOk'); }, 2000);
 });
 
 // ── Утилиты ────────────────────────────────────────────────────────────
@@ -852,7 +958,7 @@ function checkTrack() {
         }
       }
     }
-    if (trackStatus) trackStatus.textContent = recovering ? '⏳ пауза' : (trackState === 'held' ? 'держи…' : '');
+    if (trackStatus) trackStatus.textContent = recovering ? t('pause') : (trackState === 'held' ? t('hold') : '');
   } else {
     if (trackState === 'neutral') {
       // grace window: кратковременный дроп не сбрасывает hold timer
@@ -872,7 +978,7 @@ function checkTrack() {
     }
     if (trackStatus) {
       const recLeft = trackRecoverUntil - now;
-      trackStatus.textContent = recLeft > 0 ? '⏳ пауза' : (baseline ? 'готов' : '');
+      trackStatus.textContent = recLeft > 0 ? t('pause') : (baseline ? t('ready') : '');
     }
   }
 }
@@ -909,7 +1015,7 @@ function checkYawVol() {
         applyVol();
       }
     }
-    if (yawStatus) { yawStatus.textContent = yawActive ? '🔇 тихо' : ''; yawStatus.style.color = 'var(--blue)'; }
+    if (yawStatus) { yawStatus.textContent = yawActive ? t('quiet') : ''; yawStatus.style.color = 'var(--blue)'; }
   } else {
     yawHoldStart = null;
     if (bYawHoldEl) bYawHoldEl.style.width = '0%';
@@ -949,7 +1055,7 @@ function checkPitchVol() {
         applyVol();
       }
     }
-    if (pitchVolStatus) { pitchVolStatus.textContent = pitchVolActive ? '🔇 тихо' : ''; pitchVolStatus.style.color = 'var(--blue)'; }
+    if (pitchVolStatus) { pitchVolStatus.textContent = pitchVolActive ? t('quiet') : ''; pitchVolStatus.style.color = 'var(--blue)'; }
   } else {
     pitchVolHoldStart = null;
     if (bPitchVolHoldEl) bPitchVolHoldEl.style.width = '0%';
@@ -976,17 +1082,17 @@ function checkPosture(now) {
     const held = now - badSince;
     const left = Math.max(0, delay - held);
     dot.className = held >= delay ? 'dot bad' : 'dot idle';
-    postureLbl.textContent = held >= delay ? '⚠ Выправи осанку!' : 'Проверяю…';
+    postureLbl.textContent = held >= delay ? t('fixPosture') : t('checking');
     postureTimer.textContent = held >= delay
-      ? Math.round(held/1000) + 'с'
-      : left > 0 ? '-' + Math.round(left/1000) + 'с' : '';
+      ? Math.round(held/1000) + t('u_sec')
+      : left > 0 ? '-' + Math.round(left/1000) + t('u_sec') : '';
     if (held >= delay && now - lastAlert > cooldown) {
       lastAlert = now; playAlert();
     }
   } else {
     badSince = null;
     dot.className = 'dot good';
-    postureLbl.textContent = 'Осанка OK';
+    postureLbl.textContent = t('postureOk');
     postureTimer.textContent = '';
   }
 }
@@ -1016,18 +1122,18 @@ async function poll() {
       rollEl.textContent  = r.toFixed(1) + '°';
       // рендер куба — в rAF-цикле с лерпом, здесь только цель
       viewTarget = {y, p, r};
-      connEl.className = 'conn ok'; connEl.textContent = 'AirPods активны ✔';
+      connEl.className = 'conn ok'; connEl.textContent = t('connOk');
       checkPosture(Date.now());
       checkTrack();
       checkPitchVol();
       checkYawVol();
     } else {
       connEl.className = 'conn warn';
-      connEl.textContent = gotData ? 'AirPods потеряны…' : 'Жду AirPods — надень наушники';
+      connEl.textContent = gotData ? t('connLost') : t('connWait');
     }
   } catch(e) {
     connEl.className = 'conn err';
-    connEl.textContent = 'Нет связи: ' + e.message;
+    connEl.textContent = t('connErr') + e.message;
   }
   pollRunning = false;
   pollTimer = setTimeout(poll, 50);
@@ -1042,6 +1148,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') kickPoll();
 });
 window.addEventListener('focus', kickPoll);
+setLang(lang);
 poll();
 </script>
 </body>
