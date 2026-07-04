@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AirPods Head Tracker — real head tracking on your Mac</title>
 <meta name="description" content="Free macOS app that reads real head motion from AirPods Pro / Max: 3D visualization, posture monitoring and hands-free music control.">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#121212;--card:#1e1e1e;--accent:#00ffaa;--blue:#33b5e5;--red:#ff4444;--dim:#888;--text:#fff}
@@ -40,25 +42,9 @@ h1 .grad{background:linear-gradient(90deg,var(--accent),var(--blue));
   font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
   padding:4px 14px;border-radius:14px}
 
-/* Animated cube */
-.scene{width:150px;height:150px;perspective:520px;margin:64px 0 30px}
-.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;
-  animation:spin 14s linear infinite}
-@keyframes spin{
-  0%{transform:rotateX(-18deg) rotateY(0deg)}
-  25%{transform:rotateX(8deg) rotateY(100deg)}
-  50%{transform:rotateX(-25deg) rotateY(185deg)}
-  75%{transform:rotateX(5deg) rotateY(268deg)}
-  100%{transform:rotateX(-18deg) rotateY(360deg)}}
-.face{position:absolute;width:150px;height:150px;border:2px solid var(--accent);
-  background:rgba(0,255,170,.07);border-radius:14px;
-  display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--accent)}
-.f1{transform:rotateY(0deg) translateZ(75px);background:rgba(0,255,170,.16)}
-.f2{transform:rotateY(180deg) translateZ(75px)}
-.f3{transform:rotateY(90deg) translateZ(75px);border-color:var(--blue)}
-.f4{transform:rotateY(-90deg) translateZ(75px);border-color:var(--blue)}
-.f5{transform:rotateX(90deg) translateZ(75px)}
-.f6{transform:rotateX(-90deg) translateZ(75px)}
+/* Animated cube (WebGL, та же модель что в приложении) */
+.scene{width:230px;height:230px;margin:44px 0 16px}
+#cube3d{width:100%;height:100%;display:block}
 
 /* Sections */
 section{padding:70px 0}
@@ -113,11 +99,7 @@ footer a{color:var(--dim)}
     <a class="btn" href="https://github.com/antonenkoo/airpods-head-tracker/releases/latest/download/AirPodsHeadTracker.dmg" data-i18n="dl">⬇ Download for Mac (.dmg)</a>
     <small data-i18n="dlNote">macOS 14+ · Apple Silicon · 1.6 MB</small>
   </div>
-  <div class="scene"><div class="cube">
-    <div class="face f1" data-i18n="face">FACE ☺</div><div class="face f2"></div>
-    <div class="face f3"></div><div class="face f4"></div>
-    <div class="face f5"></div><div class="face f6"></div>
-  </div></div>
+  <div class="scene"><canvas id="cube3d"></canvas></div>
 </header>
 
 <section>
@@ -221,10 +203,142 @@ function setLang(l) {
   document.getElementById('langEn').classList.toggle('on', l === 'en');
   document.getElementById('langRu').classList.toggle('on', l === 'ru');
   localStorage.setItem('lang', l);
+  if (window.__setFaceLang) window.__setFaceLang(l);
 }
 const saved = localStorage.getItem('lang') ||
   (navigator.language.startsWith('ru') ? 'ru' : 'en');
 if (saved !== 'en') setLang(saved);
+</script>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.min.js"}}
+</script>
+<script type="module">
+// Та же модель куба, что и в приложении (пресет из v1.5.0)
+import * as THREE from 'three';
+
+const P = { tubeR: 0.01, cornerR: 0.03, glass: 0.09, roughness: 0.32 };
+const ACCENT = 0x00ffaa;
+const SIZE = 1.6;
+
+const canvas = document.getElementById('cube3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setClearColor(0x000000, 0);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
+camera.position.set(0, 0.18, 3.3);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.5);
+key.position.set(2.5, 3, 2);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x66ffcc, 0.5);
+rim.position.set(-3, -1, -2);
+scene.add(rim);
+
+function roundedFrame(tubeR, cornerR, material) {
+  const g = new THREE.Group();
+  const h = SIZE / 2;
+  const cyl = new THREE.CylinderGeometry(tubeR, tubeR, SIZE - cornerR * 2, 20);
+  const arc = new THREE.TorusGeometry(cornerR, tubeR, 14, 16, Math.PI / 2);
+
+  const edge = (axis, a, b) => {
+    const m = new THREE.Mesh(cyl, material);
+    if (axis === 'x') { m.rotation.z = Math.PI / 2; m.position.set(0, a, b); }
+    if (axis === 'y') { m.position.set(a, 0, b); }
+    if (axis === 'z') { m.rotation.x = Math.PI / 2; m.position.set(a, b, 0); }
+    g.add(m);
+  };
+  for (const a of [-h, h]) for (const b of [-h, h]) {
+    edge('x', a, b); edge('y', a, b); edge('z', a, b);
+  }
+
+  const quad = (sx, sy) => (sx > 0 ? (sy > 0 ? 0 : -Math.PI / 2) : (sy > 0 ? Math.PI / 2 : Math.PI));
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
+    let m = new THREE.Mesh(arc, material);
+    m.rotation.z = quad(sx, sy);
+    m.position.set(sx * (h - cornerR), sy * (h - cornerR), sz * h);
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.x = Math.PI / 2;
+    m.rotateZ(quad(sx, sz));
+    m.position.set(sx * (h - cornerR), sy * h, sz * (h - cornerR));
+    g.add(m);
+    m = new THREE.Mesh(arc, material);
+    m.rotation.y = -Math.PI / 2;
+    m.rotateZ(quad(sz, sy));
+    m.position.set(sx * h, sy * (h - cornerR), sz * (h - cornerR));
+    g.add(m);
+  }
+  return g;
+}
+
+const cubeGroup = new THREE.Group();
+const coreMat = new THREE.MeshPhysicalMaterial({
+  color: ACCENT, roughness: P.roughness, metalness: 0,
+});
+cubeGroup.add(roundedFrame(P.tubeR, P.cornerR, coreMat));
+
+const glass = new THREE.Mesh(
+  new THREE.BoxGeometry(SIZE, SIZE, SIZE),
+  new THREE.MeshPhysicalMaterial({
+    color: ACCENT, transparent: true, opacity: P.glass,
+    roughness: 0.2, side: THREE.DoubleSide, depthWrite: false,
+  })
+);
+glass.renderOrder = 1;
+cubeGroup.add(glass);
+
+// Надпись FACE / ЛИЦО на передней грани
+const labelCanvas = document.createElement('canvas');
+labelCanvas.width = labelCanvas.height = 256;
+const labelCtx = labelCanvas.getContext('2d');
+const labelTex = new THREE.CanvasTexture(labelCanvas);
+function drawFace(text) {
+  labelCtx.clearRect(0, 0, 256, 256);
+  labelCtx.font = 'bold 38px -apple-system, Arial';
+  labelCtx.textAlign = 'center';
+  labelCtx.textBaseline = 'middle';
+  labelCtx.fillStyle = '#00ffaa';
+  labelCtx.fillText(text, 128, 128);
+  labelTex.needsUpdate = true;
+}
+const label = new THREE.Mesh(
+  new THREE.PlaneGeometry(SIZE * 0.92, SIZE * 0.92),
+  new THREE.MeshBasicMaterial({ map: labelTex, transparent: true })
+);
+label.position.z = SIZE / 2 + 0.003;
+label.renderOrder = 2;
+cubeGroup.add(label);
+
+window.__setFaceLang = l => drawFace(l === 'ru' ? 'ЛИЦО ☺' : 'FACE ☺');
+window.__setFaceLang(document.documentElement.lang);
+
+scene.add(cubeGroup);
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (w && h) {
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+const t0 = performance.now();
+(function loop() {
+  const t = (performance.now() - t0) / 1000;
+  cubeGroup.rotation.y = t * 0.5;
+  cubeGroup.rotation.x = Math.sin(t * 0.6) * 0.3;
+  cubeGroup.rotation.z = Math.sin(t * 0.4) * 0.12;
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+})();
 </script>
 </body>
 </html>
