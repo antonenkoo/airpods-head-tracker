@@ -6,7 +6,7 @@
 set -e
 cd "$(dirname "$0")"
 
-VERSION="1.5.0"
+VERSION="1.5.1"
 APP="AirPodsTracker.app"
 BIN_DIR="$APP/Contents/MacOS"
 RES_DIR="$APP/Contents/Resources"

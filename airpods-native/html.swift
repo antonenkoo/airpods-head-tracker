@@ -28,7 +28,7 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
 
 /* 3D куб (WebGL) */
 .scene-wrap{width:100%;display:flex;justify-content:center;overflow:visible}
-.scene{width:calc(var(--cs)*1.55);height:calc(var(--cs)*1.55);flex-shrink:0}
+.scene{width:calc(var(--cs)*1.85);height:calc(var(--cs)*1.85);flex-shrink:0}
 #cube3d{width:100%;height:100%;display:block}
 
 /* Track-switch flash */
@@ -1178,8 +1178,10 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 renderer.setClearColor(0x000000, 0);
 
 const scene = new THREE.Scene();
+// Дистанция такая, чтобы ограничивающая сфера куба (r = h·√3) целиком
+// помещалась в кадр при любом повороте головы: d ≥ r / sin(fov/2)
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
-camera.position.set(0, 0.18, 3.3);
+camera.position.set(0, 0, 4.5);
 camera.lookAt(0, 0, 0);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));

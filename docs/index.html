@@ -43,7 +43,7 @@ h1 .grad{background:linear-gradient(90deg,var(--accent),var(--blue));
   padding:4px 14px;border-radius:14px}
 
 /* Animated cube (WebGL, та же модель что в приложении) */
-.scene{width:230px;height:230px;margin:44px 0 16px}
+.scene{width:280px;height:280px;margin:36px 0 10px}
 #cube3d{width:100%;height:100%;display:block}
 
 /* Sections */
@@ -227,8 +227,10 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 renderer.setClearColor(0x000000, 0);
 
 const scene = new THREE.Scene();
+// Дистанция подобрана так, чтобы ограничивающая сфера куба (r = h·√3)
+// целиком помещалась в кадр при любом повороте: d ≥ r / sin(fov/2)
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 20);
-camera.position.set(0, 0.18, 3.3);
+camera.position.set(0, 0, 4.5);
 camera.lookAt(0, 0, 0);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
