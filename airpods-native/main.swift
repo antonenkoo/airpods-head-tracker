@@ -142,6 +142,86 @@ func mediaAction(_ action: String, level: Int? = nil) {
     }
 }
 
+// MARK: - Версия приложения
+let appVersion = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
+
+// MARK: - Self-update
+// Скачивает свежий DMG с GitHub Releases, подменяет .app на месте и перезапускается.
+final class UpdateManager {
+    static let shared = UpdateManager()
+    private let lock = NSLock()
+    private var state = "idle"   // idle | downloading | installing | relaunching | error: …
+
+    func getState() -> String { lock.lock(); defer { lock.unlock() }; return state }
+    private func set(_ s: String) { lock.lock(); state = s; lock.unlock(); fputs("🔄 update: \(s)\n", stderr) }
+
+    func start() {
+        lock.lock()
+        let busy = (state == "downloading" || state == "installing" || state == "relaunching")
+        if !busy { state = "downloading" }
+        lock.unlock()
+        if busy { return }
+        DispatchQueue.global(qos: .userInitiated).async { self.run() }
+    }
+
+    private func run() {
+        let dmgURL = URL(string: "https://github.com/antonenkoo/airpods-head-tracker/releases/latest/download/AirPodsHeadTracker.dmg")!
+        let tmpDMG = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("aht-update.dmg")
+        do {
+            let data = try Data(contentsOf: dmgURL)
+            try? FileManager.default.removeItem(at: tmpDMG)
+            try data.write(to: tmpDMG)
+        } catch {
+            set("error: download failed"); return
+        }
+
+        set("installing")
+        let mount = NSTemporaryDirectory() + "aht-mount"
+        _ = shell("/usr/bin/hdiutil", ["attach", tmpDMG.path, "-nobrowse", "-quiet", "-mountpoint", mount])
+        let newApp = mount + "/AirPodsTracker.app"
+        guard FileManager.default.fileExists(atPath: newApp) else {
+            _ = shell("/usr/bin/hdiutil", ["detach", mount, "-quiet"])
+            set("error: unexpected dmg contents"); return
+        }
+
+        let target = Bundle.main.bundlePath
+        let backup = target + ".old"
+        try? FileManager.default.removeItem(atPath: backup)
+        do { try FileManager.default.moveItem(atPath: target, toPath: backup) }
+        catch {
+            _ = shell("/usr/bin/hdiutil", ["detach", mount, "-quiet"])
+            set("error: cannot replace app"); return
+        }
+        let copied = shell("/usr/bin/ditto", [newApp, target]) == 0
+        _ = shell("/usr/bin/hdiutil", ["detach", mount, "-quiet"])
+        guard copied else {
+            try? FileManager.default.removeItem(atPath: target)
+            try? FileManager.default.moveItem(atPath: backup, toPath: target)
+            set("error: install failed"); return
+        }
+        try? FileManager.default.removeItem(atPath: backup)
+        try? FileManager.default.removeItem(at: tmpDMG)
+
+        set("relaunching")
+        // Дочерний sh переживает выход родителя: старый инстанс освобождает порт,
+        // затем открывается новая версия
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relaunch.arguments = ["-c", "sleep 1.2; /usr/bin/open -n \"\(target)\""]
+        try? relaunch.run()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { exit(0) }
+    }
+
+    private func shell(_ cmd: String, _ args: [String]) -> Int32 {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: cmd); p.arguments = args
+        p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+        do { try p.run() } catch { return -1 }
+        p.waitUntilExit()
+        return p.terminationStatus
+    }
+}
+
 // MARK: - Минимальный HTTP-сервер
 func httpResponse(status: String, contentType: String, body: Data) -> Data {
     var header = "HTTP/1.1 \(status)\r\n"
@@ -212,6 +292,21 @@ final class HTTPServer {
 
             } else if path.hasPrefix("/three.module.min.js") {
                 resp = httpResponse(status: "200 OK", contentType: "application/javascript", body: threeJSData)
+
+            } else if path.hasPrefix("/api/app-info") {
+                resp = httpResponse(status: "200 OK", contentType: "application/json",
+                                    body: "{\"version\":\"\(appVersion)\"}".data(using: .utf8)!)
+
+            } else if path.hasPrefix("/api/update-start") {
+                UpdateManager.shared.start()
+                resp = httpResponse(status: "200 OK", contentType: "application/json",
+                                    body: "{\"ok\":true}".data(using: .utf8)!)
+
+            } else if path.hasPrefix("/api/update-status") {
+                let st = UpdateManager.shared.getState()
+                    .replacingOccurrences(of: "\"", with: "'")
+                resp = httpResponse(status: "200 OK", contentType: "application/json",
+                                    body: "{\"state\":\"\(st)\"}".data(using: .utf8)!)
 
             } else if path == "/api/players" {
                 let s = appRunning(spotifyID), m = appRunning(musicID)

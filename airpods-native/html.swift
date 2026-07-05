@@ -94,6 +94,73 @@ h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
   font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:11px;cursor:pointer}
 .lang-sw button.on{background:var(--accent);color:#111}
 
+/* Чип версии и кнопка фидбека в шапке */
+.ver-chip,.fb-open{flex:none;min-width:0;background:#1e1e1e;border:1px solid #333;
+  border-radius:14px;padding:4px 12px;font-family:monospace;font-size:.7rem;
+  color:var(--dim);cursor:pointer;transition:.2s}
+.ver-chip:hover,.fb-open:hover{color:var(--accent);border-color:var(--accent)}
+
+/* Модалки (релиз-ноуты, фидбек) */
+.am-overlay{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.6);
+  backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s}
+.am-overlay.show{opacity:1;pointer-events:auto}
+.am-panel{width:min(520px,92vw);max-height:82vh;overflow-y:auto;background:#181818;
+  border:1px solid #333;border-radius:16px;padding:20px 22px;
+  transform:translateY(14px);transition:transform .25s}
+.am-overlay.show .am-panel{transform:none}
+.am-head{display:flex;align-items:center;justify-content:space-between;
+  font-weight:700;font-size:1rem;color:var(--accent);margin-bottom:14px}
+.am-close{background:none;border:none;color:var(--dim);font-size:1.3rem;
+  cursor:pointer;padding:0 4px;flex:none;min-width:0}
+.am-close:hover{color:var(--accent)}
+
+/* Релиз-ноуты */
+.rel{border-bottom:1px solid #262626;padding:12px 0}
+.rel:last-child{border-bottom:none}
+.rel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.rel-head b{color:var(--accent);font-family:monospace}
+.rel-head span{font-size:.7rem;color:var(--dim);font-family:monospace}
+.rel-notes{font-size:.82rem;color:#b5b5b5;line-height:1.6}
+
+/* Фидбек-форма */
+.fb-types{display:flex;gap:8px;margin-bottom:12px}
+.fb-types button{flex:1;background:#222;border:1px solid #3a3a3a;border-radius:10px;
+  padding:9px 6px;font-size:.8rem;color:#999;cursor:pointer;transition:.2s;min-width:0}
+.fb-types button.on{background:rgba(0,255,170,.12);border-color:var(--accent);color:var(--accent)}
+#fbText{width:100%;background:#141414;border:1px solid #333;border-radius:10px;
+  color:var(--text);font-family:inherit;font-size:.86rem;padding:10px 12px;
+  resize:vertical;min-height:96px;margin-bottom:14px}
+#fbText:focus{outline:none;border-color:var(--accent)}
+.fb-sat{margin-bottom:16px}
+.fb-sat-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.fb-sat-head label{font-size:.78rem;color:#999;flex:1}
+#fbSatVal{font-family:monospace;font-size:.85rem;color:var(--accent);font-weight:700}
+#fbSatEmo{font-size:1.1rem}
+#fbSatRange{width:100%;accent-color:var(--accent)}
+.fb-skip{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:.72rem;
+  color:var(--dim);cursor:pointer}
+.fb-skip input{accent-color:var(--accent);width:13px;height:13px;
+  -webkit-appearance:checkbox;appearance:checkbox}
+.fb-send{width:100%}
+.fb-status{font-size:.78rem;font-family:monospace;text-align:center;margin-top:10px;min-height:1.2em}
+.fb-status.ok{color:var(--accent)}
+.fb-status.err{color:var(--red)}
+
+/* Карточка обновления */
+.upd-card{position:fixed;right:18px;bottom:18px;z-index:55;width:250px;
+  background:#181818;border:1px solid rgba(0,255,170,.5);border-radius:14px;
+  padding:14px 16px;box-shadow:0 10px 40px rgba(0,0,0,.5);
+  transform:translateY(140%);opacity:0;transition:transform .5s,opacity .4s}
+.upd-card.show{transform:none;opacity:1}
+.upd-txt{font-size:.82rem;color:#ccc;margin-bottom:10px}
+.upd-txt b{color:var(--accent);font-family:monospace}
+.upd-btn{width:100%;margin-bottom:6px}
+.upd-later{width:100%;background:none;border:none;color:var(--dim);font-size:.72rem;
+  cursor:pointer;min-width:0;padding:4px}
+.upd-state{font-family:monospace;font-size:.7rem;color:var(--accent);
+  text-align:center;min-height:1em;margin-top:4px}
+
 /* Настройки-сетка */
 .sg{display:grid;grid-template-columns:1fr auto auto;gap:5px 8px;align-items:center}
 .sg label{font-size:.8rem;color:#999}
@@ -232,6 +299,8 @@ button:active{opacity:.65}
     </div>
     <div style="display:flex;align-items:center;gap:12px">
       <div class="conn warn" id="conn">Connecting…</div>
+      <button class="ver-chip" id="verChip" title="Release notes">v—</button>
+      <button class="fb-open" id="fbOpen" data-i18n="fbOpen">Feedback</button>
       <div class="lang-sw">
         <button id="langEn" class="on">EN</button>
         <button id="langRu">RU</button>
@@ -460,6 +529,48 @@ button:active{opacity:.65}
 
 <div class="track-flash" id="trackFlash"></div>
 
+<!-- Релиз-ноуты -->
+<div class="am-overlay" id="notesModal">
+  <div class="am-panel">
+    <div class="am-head"><span data-i18n="notesTitle">What’s new</span>
+      <button class="am-close" data-close="notesModal">×</button></div>
+    <div id="notesBody"><div class="rel-notes">…</div></div>
+  </div>
+</div>
+
+<!-- Фидбек -->
+<div class="am-overlay" id="fbModal">
+  <div class="am-panel">
+    <div class="am-head"><span data-i18n="fbTitle">Feedback</span>
+      <button class="am-close" data-close="fbModal">×</button></div>
+    <div class="fb-types" id="fbTypes">
+      <button data-type="bug" class="on" data-i18n="fbBug">🐛 Bug</button>
+      <button data-type="feature" data-i18n="fbFeat">✨ Feature</button>
+      <button data-type="idea" data-i18n="fbIdea">💡 Idea</button>
+    </div>
+    <textarea id="fbText" data-i18n-ph="fbPh" placeholder="What happened? What would make the app better?"></textarea>
+    <div class="fb-sat">
+      <div class="fb-sat-head">
+        <label data-i18n="fbSat">Satisfaction meter</label>
+        <span id="fbSatVal">80%</span><span id="fbSatEmo">🙂</span>
+      </div>
+      <input type="range" id="fbSatRange" min="0" max="100" value="80">
+      <label class="fb-skip"><input type="checkbox" id="fbSatSkip">
+        <span data-i18n="fbSkip">don’t include the rating</span></label>
+    </div>
+    <button class="btn-primary fb-send" id="fbSend" data-i18n="fbSend">Send</button>
+    <div class="fb-status" id="fbStatus"></div>
+  </div>
+</div>
+
+<!-- Доступно обновление -->
+<div class="upd-card" id="updCard">
+  <div class="upd-txt"><b id="updVer">v?.?.?</b> <span data-i18n="updAvail">is available</span></div>
+  <button class="btn-primary upd-btn" id="updGo" data-i18n="updGo">Update &amp; restart</button>
+  <button class="upd-later" id="updLater" data-i18n="updLater">later</button>
+  <div class="upd-state" id="updState"></div>
+</div>
+
 <script>
 // ── i18n ────────────────────────────────────────────────────────────────
 const L = {
@@ -489,6 +600,16 @@ const L = {
     connOk:'AirPods active ✔', connLost:'AirPods lost…',
     connWait:'Waiting for AirPods — put them in', connErr:'No connection: ',
     noPlayer:'Spotify or Music isn’t running — open one of them to switch tracks with head gestures.',
+    fbOpen:'Feedback', fbTitle:'Feedback',
+    fbBug:'🐛 Bug', fbFeat:'✨ Feature', fbIdea:'💡 Idea',
+    fbPh:'What happened? What would make the app better?',
+    fbSat:'Satisfaction meter', fbSkip:'don’t include the rating',
+    fbSend:'Send', fbSending:'sending…', fbDone:'✓ sent — thank you!',
+    fbErr:'✗ failed to send, try later', fbShort:'✗ describe it in a few more words',
+    notesTitle:'What’s new', notesErr:'Couldn’t load release notes (offline?)',
+    updAvail:'is available', updGo:'Update & restart', updLater:'later',
+    upd_downloading:'downloading…', upd_installing:'installing…',
+    upd_relaunching:'restarting…', updErr:'update failed — try later',
     u_deg:'°', u_pct:'%', u_s:' s', u_ms:'ms', u_sec:'s',
     snd_double:'Double tone', snd_triple:'Three short', snd_rising:'Rising',
     snd_ping:'Single ping', snd_low:'Low hum', snd_alarm:'Alarm (aggressive)',
@@ -520,6 +641,16 @@ const L = {
     connOk:'AirPods активны ✔', connLost:'AirPods потеряны…',
     connWait:'Жду AirPods — надень наушники', connErr:'Нет связи: ',
     noPlayer:'Spotify или Музыка не запущены — открой один из плееров, чтобы переключать треки жестами головы.',
+    fbOpen:'Фидбек', fbTitle:'Обратная связь',
+    fbBug:'🐛 Баг', fbFeat:'✨ Фича', fbIdea:'💡 Идея',
+    fbPh:'Что случилось? Что сделало бы приложение лучше?',
+    fbSat:'Шкала удовлетворённости', fbSkip:'не включать оценку',
+    fbSend:'Отправить', fbSending:'отправляю…', fbDone:'✓ отправлено — спасибо!',
+    fbErr:'✗ не отправилось, попробуй позже', fbShort:'✗ опиши чуть подробнее',
+    notesTitle:'Что нового', notesErr:'Не удалось загрузить релиз-ноуты (офлайн?)',
+    updAvail:'уже доступна', updGo:'Обновить и перезапустить', updLater:'позже',
+    upd_downloading:'скачиваю…', upd_installing:'устанавливаю…',
+    upd_relaunching:'перезапускаюсь…', updErr:'обновление не удалось — попробуй позже',
     u_deg:'°', u_pct:'%', u_s:' с', u_ms:'мс', u_sec:'с',
     snd_double:'Двойной тон', snd_triple:'Три коротких', snd_rising:'Нарастающий',
     snd_ping:'Одиночный пинг', snd_low:'Низкий гул', snd_alarm:'Тревога (агрессивный)',
@@ -612,6 +743,7 @@ for (const val of SOUND_KEYS) {
     opt.classList.add('sel');
     selSoundBox.classList.remove('open');
     playAlert(); // сразу дать послушать выбранный сигнал
+    saveSettings();
   });
   soundOptEls.set(val, opt);
   selSoundList.appendChild(opt);
@@ -632,6 +764,10 @@ function setLang(l) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const s = L[lang][el.dataset.i18n];
     if (s !== undefined) el.textContent = s;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const s = L[lang][el.dataset.i18nPh];
+    if (s !== undefined) el.placeholder = s;
   });
   soundOptEls.forEach((el, val) => el.textContent = t('snd_' + val));
   selSoundLbl.textContent = t('snd_' + selSound.value);
@@ -1153,6 +1289,180 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') kickPoll();
 });
 window.addEventListener('focus', kickPoll);
+
+// ── Персист настроек между запусками ───────────────────────────────────
+const PERSIST_RANGES = ['slPitch','slRoll','slDelay','slCooldown','slVol',
+  'slTrackTh','slTrackHold','slPitchVolTh','slPitchVolHold',
+  'slYawTh','slYawHold','slYawRed','slNormVol','slFade'];
+const PERSIST_CHECKS = ['chkSound','chkTrack','chkPitchVol','chkYawVol'];
+
+function saveSettings() {
+  const s = { sound: selSound.value };
+  PERSIST_RANGES.forEach(id => s[id] = document.getElementById(id).value);
+  PERSIST_CHECKS.forEach(id => s[id] = document.getElementById(id).checked);
+  localStorage.setItem('settings.v1', JSON.stringify(s));
+}
+(function restoreSettings() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('settings.v1')); } catch (e) {}
+  if (s) {
+    PERSIST_RANGES.forEach(id => {
+      if (s[id] === undefined) return;
+      const el = document.getElementById(id);
+      el.value = s[id];
+      el.dispatchEvent(new Event('input'));   // обновить подпись значения
+    });
+    PERSIST_CHECKS.forEach(id => {
+      if (s[id] === undefined) return;
+      const el = document.getElementById(id);
+      el.checked = s[id];
+      el.dispatchEvent(new Event('change'));  // показать/скрыть sub-настройки
+    });
+    if (s.sound && SOUND_KEYS.includes(s.sound)) {
+      selSound.value = s.sound;
+      selSoundLbl.textContent = t('snd_' + s.sound);
+      selSoundList.querySelectorAll('.sel').forEach(o => o.classList.remove('sel'));
+      soundOptEls.get(s.sound)?.classList.add('sel');
+    }
+  }
+  [...PERSIST_RANGES, ...PERSIST_CHECKS].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', saveSettings);
+    el.addEventListener('change', saveSettings);
+  });
+})();
+
+// ── Модалки: открыть/закрыть ───────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.am-close').forEach(b =>
+  b.addEventListener('click', () => closeModal(b.dataset.close)));
+document.querySelectorAll('.am-overlay').forEach(ov =>
+  ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('show'); }));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape')
+    document.querySelectorAll('.am-overlay.show').forEach(ov => ov.classList.remove('show'));
+});
+
+// ── Версия и релиз-ноуты ───────────────────────────────────────────────
+const REPO = 'antonenkoo/airpods-head-tracker';
+const verChip = document.getElementById('verChip');
+let appVersion = '0.0.0';
+fetch('/api/app-info').then(r => r.json()).then(j => {
+  appVersion = j.version;
+  verChip.textContent = 'v' + appVersion;
+  checkUpdate();
+}).catch(() => {});
+
+const escHtml = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let notesLoaded = false;
+verChip.addEventListener('click', async () => {
+  openModal('notesModal');
+  if (notesLoaded) return;
+  const body = document.getElementById('notesBody');
+  try {
+    const rels = await fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=6')
+      .then(r => r.json());
+    body.innerHTML = rels.map(r => `
+      <div class="rel">
+        <div class="rel-head"><b>${escHtml(r.tag_name || '')}</b>
+          <span>${new Date(r.published_at).toLocaleDateString()}</span></div>
+        <div class="rel-notes">${escHtml(r.body || '').replace(/\\r?\\n/g, '<br>')}</div>
+      </div>`).join('');
+    notesLoaded = true;
+  } catch (e) {
+    body.innerHTML = '<div class="rel-notes">' + t('notesErr') + '</div>';
+  }
+});
+
+// ── Проверка обновлений + self-update ──────────────────────────────────
+function cmpVer(a, b) {
+  const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+async function checkUpdate() {
+  try {
+    const rel = await fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+      .then(r => r.json());
+    const tag = (rel.tag_name || '').replace(/^v/, '');
+    if (tag && cmpVer(tag, appVersion) === 1 &&
+        localStorage.getItem('skipVer') !== tag) {
+      document.getElementById('updVer').textContent = 'v' + tag;
+      document.getElementById('updCard').dataset.tag = tag;
+      document.getElementById('updCard').classList.add('show');
+    }
+  } catch (e) {}
+}
+document.getElementById('updLater').addEventListener('click', () => {
+  const card = document.getElementById('updCard');
+  localStorage.setItem('skipVer', card.dataset.tag || '');
+  card.classList.remove('show');
+});
+document.getElementById('updGo').addEventListener('click', async () => {
+  const stateEl = document.getElementById('updState');
+  document.getElementById('updGo').disabled = true;
+  try { await fetch('/api/update-start'); } catch (e) {}
+  const timer = setInterval(async () => {
+    let st = '';
+    try { st = (await fetch('/api/update-status').then(r => r.json())).state; }
+    catch (e) { st = 'relaunching'; }   // сервер умер = перезапуск идёт
+    if (st.startsWith('error')) {
+      clearInterval(timer);
+      stateEl.textContent = t('updErr');
+      document.getElementById('updGo').disabled = false;
+      return;
+    }
+    stateEl.textContent = t('upd_' + st) !== 'upd_' + st ? t('upd_' + st) : st;
+  }, 700);
+});
+
+// ── Фидбек ─────────────────────────────────────────────────────────────
+const FEEDBACK_API = 'https://api-production-d023.up.railway.app';
+let fbType = 'bug';
+document.getElementById('fbOpen').addEventListener('click', () => openModal('fbModal'));
+document.querySelectorAll('#fbTypes button').forEach(b =>
+  b.addEventListener('click', () => {
+    fbType = b.dataset.type;
+    document.querySelectorAll('#fbTypes button').forEach(x => x.classList.toggle('on', x === b));
+  }));
+const fbSatRange = document.getElementById('fbSatRange');
+const fbSatSync = () => {
+  const v = Number(fbSatRange.value);
+  document.getElementById('fbSatVal').textContent = v + '%';
+  document.getElementById('fbSatEmo').textContent =
+    v < 20 ? '💀' : v < 40 ? '😖' : v < 60 ? '😐' : v < 80 ? '🙂' : '🤩';
+};
+fbSatRange.addEventListener('input', fbSatSync);
+fbSatSync();
+document.getElementById('fbSend').addEventListener('click', async () => {
+  const status = document.getElementById('fbStatus');
+  const text = document.getElementById('fbText').value.trim();
+  if (text.length < 3) { status.className = 'fb-status err'; status.textContent = t('fbShort'); return; }
+  status.className = 'fb-status'; status.textContent = t('fbSending');
+  const skip = document.getElementById('fbSatSkip').checked;
+  try {
+    const r = await fetch(FEEDBACK_API + '/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: fbType, message: text,
+        satisfaction: skip ? null : Number(fbSatRange.value),
+        version: appVersion, locale: lang,
+      }),
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    status.className = 'fb-status ok'; status.textContent = t('fbDone');
+    document.getElementById('fbText').value = '';
+    setTimeout(() => { closeModal('fbModal'); status.textContent = ''; }, 1600);
+  } catch (e) {
+    status.className = 'fb-status err'; status.textContent = t('fbErr');
+  }
+});
+
 setLang(lang);
 poll();
 </script>
