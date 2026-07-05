@@ -203,13 +203,10 @@ final class UpdateManager {
         try? FileManager.default.removeItem(at: tmpDMG)
 
         set("relaunching")
-        // Дочерний sh переживает выход родителя: старый инстанс освобождает порт,
-        // затем открывается новая версия
-        let relaunch = Process()
-        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
-        relaunch.arguments = ["-c", "sleep 1.2; /usr/bin/open -n \"\(target)\""]
-        try? relaunch.run()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { exit(0) }
+        // Новый инстанс запускаем, пока старый ещё жив: его сервер будет
+        // ретраить занятый порт, а мы выходим секундой позже и порт освобождаем
+        _ = shell("/usr/bin/open", ["-n", target])
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { exit(0) }
     }
 
     private func shell(_ cmd: String, _ args: [String]) -> Int32 {
@@ -247,20 +244,41 @@ let threeJSData: Data = {
 }()
 
 final class HTTPServer {
-    private let listener: NWListener
+    private var listener: NWListener?
+    private let port: UInt16
 
-    init(port: UInt16) throws {
+    init(port: UInt16) { self.port = port }
+
+    // Порт может быть ещё занят предыдущим инстансом (self-update) — ретраим
+    func start(attempts: Int = 20) {
         let params = NWParameters.tcp
         params.allowLocalEndpointReuse = true
-        listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
-    }
-
-    func start() {
-        listener.newConnectionHandler = { conn in
+        guard let l = try? NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!) else {
+            retry(attempts); return
+        }
+        listener = l
+        l.stateUpdateHandler = { [weak self] state in
+            if case .failed(let err) = state {
+                fputs("⚠️  Порт \(self?.port ?? 0) занят (\(err)) — ретраю…\n", stderr)
+                l.cancel()
+                self?.retry(attempts)
+            }
+        }
+        l.newConnectionHandler = { conn in
             conn.start(queue: .global())
             self.receive(on: conn)
         }
-        listener.start(queue: .global())
+        l.start(queue: .global())
+    }
+
+    private func retry(_ attempts: Int) {
+        guard attempts > 0 else {
+            fputs("❌ Не удалось поднять сервер на порту \(port)\n", stderr)
+            exit(1)
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) {
+            self.start(attempts: attempts - 1)
+        }
     }
 
     private func receive(on conn: NWConnection) {
@@ -334,14 +352,9 @@ final class HTTPServer {
 // MARK: - Запуск
 let port: UInt16 = UInt16(ProcessInfo.processInfo.environment["PORT"] ?? "") ?? 8765
 startMotion()
-do {
-    let server = try HTTPServer(port: port)
-    server.start()
-    fputs("🌐 Интерфейс также доступен в браузере: http://localhost:\(port)\n", stderr)
-} catch {
-    fputs("❌ Не удалось поднять сервер на порту \(port): \(error)\n", stderr)
-    exit(1)
-}
+let server = HTTPServer(port: port)
+server.start()
+fputs("🌐 Интерфейс также доступен в браузере: http://localhost:\(port)\n", stderr)
 
 let app = NSApplication.shared
 let appDelegate = AppDelegate(port: port)

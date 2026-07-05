@@ -4,7 +4,7 @@
 posture monitoring and hands-free music control.
 
 **[⬇ Download DMG](https://github.com/antonenkoo/airpods-head-tracker/releases/latest)** ·
-**[Website](https://antonenkoo.github.io/airpods-head-tracker/)**
+**[Website](https://landing-production-cf91.up.railway.app/)**
 
 ![App window](docs/screenshot.png)
 
