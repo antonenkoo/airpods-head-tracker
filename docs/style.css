@@ -5,7 +5,10 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#121212;--bg2:#171717;--card:#181818;
-  --accent:#00ffaa;--blue:#33b5e5;--warn:#ffaa00;
+  --accent:#00ffaa;--accent-rgb:0,255,170;
+  --blue:#33b5e5;--blue-rgb:51,181,229;--warn:#ffaa00;
+  --tube:#e6fff5;--tube-sub:#bfeee0;
+  --neon-bg:#151a18;--story-mid:#141917;
   --text:#f2f2f2;--dim:#8a8a8a;--line:#262626;
   --font-d:'Unbounded',sans-serif;
   --font-b:'Space Grotesk',-apple-system,sans-serif;
@@ -48,9 +51,9 @@ body.cursor-on .cursor-dot,body.cursor-on .cursor-cube{display:block}
 .cursor-cube.hover{--cs-scale:1.7}
 .cc{width:100%;height:100%;position:relative;transform-style:preserve-3d;
   animation:ccspin 7s linear infinite}
-.cc i{position:absolute;inset:0;border:1px solid rgba(0,255,170,.55);
+.cc i{position:absolute;inset:0;border:1px solid rgba(var(--accent-rgb),.55);
   border-radius:3px;transition:border-color .3s,background .3s}
-.cursor-cube.hover .cc i{border-color:var(--accent);background:rgba(0,255,170,.06)}
+.cursor-cube.hover .cc i{border-color:var(--accent);background:rgba(var(--accent-rgb),.06)}
 .cc i:nth-child(1){transform:rotateY(0deg)   translateZ(17px)}
 .cc i:nth-child(2){transform:rotateY(180deg) translateZ(17px)}
 .cc i:nth-child(3){transform:rotateY(90deg)  translateZ(17px)}
@@ -98,7 +101,7 @@ nav.hide{transform:translateY(-100%)}
   display:flex;align-items:center;justify-content:center}
 .icon-btn:hover,.icon-btn.on{color:var(--accent);border-color:var(--accent)}
 .icon-btn.off{opacity:.45}
-/* переключатель темы пока скрыт (тема Tokyo Rain остаётся в коде) */
+/* кнопка тем скрыта — темы выбираются в секретной модалке (набери «col») */
 #themeBtn{display:none}
 
 /* ── Hero ── */
@@ -112,7 +115,7 @@ nav.hide{transform:translateY(-100%)}
   max-width:1400px;margin:0 auto;width:100%}
 .hero-chip{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-m);
   font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
-  border:1px solid rgba(0,255,170,.4);border-radius:16px;padding:6px 14px;margin-bottom:26px}
+  border:1px solid rgba(var(--accent-rgb),.4);border-radius:16px;padding:6px 14px;margin-bottom:26px}
 .hero-chip i{width:7px;height:7px;border-radius:50%;background:var(--accent);
   box-shadow:0 0 8px var(--accent);animation:blink 1.8s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
@@ -126,8 +129,8 @@ h1 .l2{display:block;background:linear-gradient(92deg,var(--accent) 20%,var(--bl
 .btn-dl{position:relative;display:inline-flex;flex-direction:column;align-items:center;
   background:var(--accent);color:#0c0c0c;border-radius:40px;padding:18px 46px;
   font-weight:700;font-size:1.05rem;overflow:hidden;
-  box-shadow:0 10px 40px rgba(0,255,170,.28);transition:box-shadow .3s;will-change:transform}
-.btn-dl:hover{box-shadow:0 14px 55px rgba(0,255,170,.45)}
+  box-shadow:0 10px 40px rgba(var(--accent-rgb),.28);transition:box-shadow .3s;will-change:transform}
+.btn-dl:hover{box-shadow:0 14px 55px rgba(var(--accent-rgb),.45)}
 .btn-dl small{font-weight:500;font-size:.68rem;opacity:.75;font-family:var(--font-m)}
 .btn-dl::after{content:"";position:absolute;top:0;left:-80%;width:50%;height:100%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
@@ -163,8 +166,8 @@ h2{font-family:var(--font-d);font-weight:700;text-transform:uppercase;
   font-size:clamp(1.7rem,4vw,3.2rem);line-height:1.08;letter-spacing:-.01em;margin-bottom:18px}
 h2:hover{animation:rgbsplit 320ms steps(2) 1}
 @keyframes rgbsplit{
-  0%{text-shadow:3px 0 rgba(0,255,170,.8),-3px 0 rgba(51,181,229,.8)}
-  50%{text-shadow:-3px 0 rgba(0,255,170,.8),3px 0 rgba(51,181,229,.8)}
+  0%{text-shadow:3px 0 rgba(var(--accent-rgb),.8),-3px 0 rgba(var(--blue-rgb),.8)}
+  50%{text-shadow:-3px 0 rgba(var(--accent-rgb),.8),3px 0 rgba(var(--blue-rgb),.8)}
   100%{text-shadow:none}}
 .lead{color:#a8a8a8;max-width:640px;font-size:1.02rem;margin-bottom:52px}
 
@@ -174,11 +177,11 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
   border-radius:18px;padding:28px 24px 26px;overflow:hidden;
   transform-style:preserve-3d;will-change:transform;transition:border-color .3s}
 .card::before{content:"";position:absolute;inset:0;opacity:0;transition:opacity .35s;
-  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(0,255,170,.10),transparent 45%)}
-.card:hover{border-color:rgba(0,255,170,.45)}
+  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(var(--accent-rgb),.10),transparent 45%)}
+.card:hover{border-color:rgba(var(--accent-rgb),.45)}
 .card:hover::before{opacity:1}
 .card .idx{font-family:var(--font-m);font-size:.66rem;color:#4a4a4a;letter-spacing:.25em}
-.card .ico{font-size:1.9rem;margin:16px 0 12px;filter:drop-shadow(0 0 12px rgba(0,255,170,.35))}
+.card .ico{font-size:1.9rem;margin:16px 0 12px;filter:drop-shadow(0 0 12px rgba(var(--accent-rgb),.35))}
 .card h3{font-family:var(--font-d);font-size:.98rem;font-weight:600;color:var(--accent);
   margin-bottom:10px;text-transform:uppercase;letter-spacing:.02em}
 .card p{font-size:.86rem;color:#a2a2a2;line-height:1.65}
@@ -212,7 +215,7 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
 .shot-frame img{display:block;width:100%;border-radius:0 0 15px 15px}
 .callout{position:absolute;display:flex;align-items:center;gap:10px;
   font-family:var(--font-m);font-size:.68rem;color:var(--accent);letter-spacing:.06em;
-  background:rgba(13,15,14,.9);border:1px solid rgba(0,255,170,.4);border-radius:20px;
+  background:rgba(13,15,14,.9);border:1px solid rgba(var(--accent-rgb),.4);border-radius:20px;
   padding:7px 14px;white-space:nowrap;backdrop-filter:blur(4px)}
 .callout i{width:8px;height:8px;border-radius:50%;background:var(--accent);
   box-shadow:0 0 10px var(--accent);animation:blink 2s infinite}
@@ -230,7 +233,7 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
   letter-spacing:.2em;text-anchor:middle}
 
 /* ── Неоновая вывеска ── */
-.neon{background:radial-gradient(ellipse at 30% 50%,#151a18 0%,var(--bg) 70%);overflow:hidden}
+.neon{background:radial-gradient(ellipse at 30% 50%,var(--neon-bg) 0%,var(--bg) 70%);overflow:hidden}
 .neon-wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(30px,6vw,80px);align-items:center}
 .neon-sign{position:relative;text-align:center;padding:9vh 0}
 .neon-jp{display:block;
@@ -240,21 +243,21 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
   letter-spacing:.1em;white-space:nowrap;
   /* сама трубка: прозрачная заливка + светлая обводка */
   color:transparent;
-  -webkit-text-stroke:3px #e6fff5;
+  -webkit-text-stroke:3px var(--tube);
   paint-order:stroke;
   /* свечение вокруг трубки */
   filter:
-    drop-shadow(0 0 4px rgba(0,255,170,.9))
-    drop-shadow(0 0 14px rgba(0,255,170,.8))
-    drop-shadow(0 0 38px rgba(0,255,170,.55))
-    drop-shadow(0 0 90px rgba(0,255,170,.35));
+    drop-shadow(0 0 4px rgba(var(--accent-rgb),.9))
+    drop-shadow(0 0 14px rgba(var(--accent-rgb),.8))
+    drop-shadow(0 0 38px rgba(var(--accent-rgb),.55))
+    drop-shadow(0 0 90px rgba(var(--accent-rgb),.35));
   animation:neonHum 8s infinite}
 .neon-sub{display:block;margin-top:26px;font-family:var(--font-m);font-size:.78rem;
-  letter-spacing:.5em;text-transform:uppercase;color:#bfeee0;
+  letter-spacing:.5em;text-transform:uppercase;color:var(--tube-sub);
   text-shadow:0 0 8px var(--blue),0 0 26px var(--blue);
   animation:neonHum 8s 1.2s infinite}
 .neon-sign::after{content:"";position:absolute;left:12%;right:12%;bottom:2vh;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(0,255,170,.5),transparent);
+  background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb),.5),transparent);
   filter:blur(1px)}
 @keyframes neonHum{
   0%,100%{opacity:1}
@@ -269,11 +272,11 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
 }
 
 /* ── История ── */
-.story{background:linear-gradient(180deg,var(--bg) 0%,#141917 50%,var(--bg) 100%);overflow:hidden}
+.story{background:linear-gradient(180deg,var(--bg) 0%,var(--story-mid) 50%,var(--bg) 100%);overflow:hidden}
 .story .wrap{position:relative}
-.glyph{position:absolute;font-family:var(--font-d);color:rgba(0,255,170,.05);
+.glyph{position:absolute;font-family:var(--font-d);color:rgba(var(--accent-rgb),.05);
   font-size:clamp(6rem,16vw,14rem);pointer-events:none;user-select:none;line-height:1;z-index:0}
-.g1{top:-4%;right:-2%}.g2{bottom:8%;left:-4%}.g3{top:42%;right:14%;color:rgba(51,181,229,.05)}
+.g1{top:-4%;right:-2%}.g2{bottom:8%;left:-4%}.g3{top:42%;right:14%;color:rgba(var(--blue-rgb),.05)}
 .story-blocks{position:relative;z-index:1;display:flex;flex-direction:column;
   gap:11vh;max-width:820px}
 .story-block p{font-size:clamp(1.05rem,1.8vw,1.45rem);line-height:1.75;color:#cfcfcf}
@@ -312,7 +315,7 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
   font-family:var(--font-m);font-size:.72rem;color:#547f6c}
 #ascii{flex:1;display:flex;align-items:center;justify-content:center;
   font-family:var(--font-m);font-size:11px;line-height:11px;color:var(--accent);
-  text-shadow:0 0 6px rgba(0,255,170,.5);padding:10px;white-space:pre}
+  text-shadow:0 0 6px rgba(var(--accent-rgb),.5);padding:10px;white-space:pre}
 @media(max-width:900px){.tech-panels{grid-template-columns:1fr}.ascii-box{min-height:280px}}
 
 /* ── Калькулятор экранных часов ── */
@@ -336,7 +339,7 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
 .faq{max-width:860px;display:flex;flex-direction:column;gap:10px}
 .faq-item{border:1px solid var(--line);border-radius:14px;background:var(--card);overflow:hidden;
   transition:border-color .3s}
-.faq-item.open{border-color:rgba(0,255,170,.45)}
+.faq-item.open{border-color:rgba(var(--accent-rgb),.45)}
 .faq-q{width:100%;display:flex;align-items:center;gap:12px;background:none;border:none;
   padding:18px 22px;font-family:var(--font-m);font-size:.9rem;color:var(--text);
   cursor:pointer;text-align:left}
@@ -353,14 +356,14 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
   /* спрятан полностью: высота + запас на свечение */
   transform:translate(-50%,calc(100% + 90px));opacity:0;pointer-events:none;
   z-index:140;display:flex;align-items:center;gap:16px;
-  background:rgba(13,15,14,.94);border:1px solid rgba(0,255,170,.5);border-radius:18px;
+  background:rgba(13,15,14,.94);border:1px solid rgba(var(--accent-rgb),.5);border-radius:18px;
   padding:16px 26px;backdrop-filter:blur(8px);cursor:pointer;
-  box-shadow:0 10px 50px rgba(0,255,170,.25);
+  box-shadow:0 10px 50px rgba(var(--accent-rgb),.25);
   transition:transform .6s cubic-bezier(.22,1,.36,1),opacity .4s}
 .guard-toast.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
 .gt-jp{font-family:'Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;font-weight:800;
-  font-size:1.15rem;color:transparent;-webkit-text-stroke:1.5px #e6fff5;
-  filter:drop-shadow(0 0 8px rgba(0,255,170,.9)) drop-shadow(0 0 22px rgba(0,255,170,.5))}
+  font-size:1.15rem;color:transparent;-webkit-text-stroke:1.5px var(--tube);
+  filter:drop-shadow(0 0 8px rgba(var(--accent-rgb),.9)) drop-shadow(0 0 22px rgba(var(--accent-rgb),.5))}
 .gt-txt{font-family:var(--font-m);font-size:.78rem;color:#cfe;letter-spacing:.06em}
 
 /* ── Пасхалка «sit» ── */
@@ -370,32 +373,53 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
 @keyframes sitflash{0%{opacity:0}12%{opacity:.35}100%{opacity:0}}
 .sit-cube{position:fixed;z-index:149;width:16px;height:16px;pointer-events:none;
   border:1.5px solid var(--accent);border-radius:3px;
-  box-shadow:0 0 10px rgba(0,255,170,.6)}
+  box-shadow:0 0 10px rgba(var(--accent-rgb),.6)}
 
-/* ── Тема Tokyo Rain ── */
-body.theme-rain{--accent:#ff5ad1;--blue:#8f6bff}
-body.theme-rain .neon-jp{-webkit-text-stroke-color:#ffe9fa;
-  filter:drop-shadow(0 0 4px rgba(255,90,209,.9)) drop-shadow(0 0 14px rgba(255,90,209,.8))
-    drop-shadow(0 0 38px rgba(255,90,209,.55)) drop-shadow(0 0 90px rgba(255,90,209,.35))}
-body.theme-rain .neon-sub{color:#f4d8ff;text-shadow:0 0 8px var(--blue),0 0 26px var(--blue)}
-body.theme-rain .gt-jp{-webkit-text-stroke-color:#ffe9fa;
-  filter:drop-shadow(0 0 8px rgba(255,90,209,.9)) drop-shadow(0 0 22px rgba(255,90,209,.5))}
-body.theme-rain .hero-chip{border-color:rgba(255,90,209,.4)}
-body.theme-rain .btn-dl{box-shadow:0 10px 40px rgba(255,90,209,.3)}
-body.theme-rain .btn-dl:hover{box-shadow:0 14px 55px rgba(255,90,209,.45)}
-body.theme-rain .card::before{
-  background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%),rgba(255,90,209,.12),transparent 45%)}
-body.theme-rain .card:hover{border-color:rgba(255,90,209,.45)}
-body.theme-rain .callout{border-color:rgba(255,90,209,.4)}
-body.theme-rain .glyph{color:rgba(255,90,209,.06)}
-body.theme-rain .g3{color:rgba(143,107,255,.07)}
-body.theme-rain .cc i{border-color:rgba(255,90,209,.6)}
-body.theme-rain .story{background:linear-gradient(180deg,var(--bg) 0%,#1a1420 50%,var(--bg) 100%)}
-body.theme-rain .neon{background:radial-gradient(ellipse at 30% 50%,#1a1520 0%,var(--bg) 70%)}
-body.theme-rain #ascii{text-shadow:0 0 6px rgba(255,90,209,.5)}
-body.theme-rain .faq-item.open{border-color:rgba(255,90,209,.45)}
-body.theme-rain .guard-toast{border-color:rgba(255,90,209,.5);box-shadow:0 10px 50px rgba(255,90,209,.25)}
-body.theme-rain .sit-cube{border-color:var(--accent);box-shadow:0 0 10px rgba(255,90,209,.6)}
+/* ── Неоновые темы (переключение — модалка по комбинации «col») ──
+   Каждая тема лишь переопределяет переменные, весь остальной CSS общий. */
+body.theme-rain{--accent:#ff5ad1;--accent-rgb:255,90,209;--blue:#8f6bff;--blue-rgb:143,107,255;
+  --tube:#ffe9fa;--tube-sub:#f4d8ff;--neon-bg:#1a1520;--story-mid:#1a1420}
+body.theme-cyan{--accent:#00e5ff;--accent-rgb:0,229,255;--blue:#4d8dff;--blue-rgb:77,141,255;
+  --tube:#e6fbff;--tube-sub:#d6f6ff;--neon-bg:#131a1d;--story-mid:#12181c}
+body.theme-violet{--accent:#b44dff;--accent-rgb:180,77,255;--blue:#ff5ad1;--blue-rgb:255,90,209;
+  --tube:#f3e9ff;--tube-sub:#e9dbff;--neon-bg:#171320;--story-mid:#16121e}
+body.theme-amber{--accent:#ffb300;--accent-rgb:255,179,0;--blue:#ff6a3d;--blue-rgb:255,106,61;
+  --tube:#fff3da;--tube-sub:#ffeac2;--neon-bg:#1c1712;--story-mid:#1a1511}
+body.theme-red{--accent:#ff3d5a;--accent-rgb:255,61,90;--blue:#ff8a00;--blue-rgb:255,138,0;
+  --tube:#ffe9ec;--tube-sub:#ffdbe0;--neon-bg:#1c1214;--story-mid:#1a1113}
+
+/* ── Модалка выбора цвета (набери «col») ── */
+.col-modal{position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;
+  padding:18px;background:rgba(0,0,0,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;pointer-events:none;transition:opacity .3s}
+.col-modal.show{opacity:1;pointer-events:auto}
+.col-panel{width:min(400px,100%);background:#101211;border:1px solid rgba(var(--accent-rgb),.5);
+  border-radius:16px;padding:22px 24px 20px;box-shadow:0 20px 80px rgba(var(--accent-rgb),.22);
+  transform:translateY(16px) scale(.97);transition:transform .3s cubic-bezier(.22,1,.36,1)}
+.col-modal.show .col-panel{transform:none}
+.col-head{display:flex;align-items:center;gap:8px;font-family:var(--font-m);font-size:.85rem;
+  color:var(--text);margin-bottom:20px}
+.col-head .pr{color:var(--accent)}
+.col-close{margin-left:auto;background:none;border:1px solid var(--line);border-radius:50%;
+  width:28px;height:28px;color:var(--dim);font-size:1rem;line-height:1;cursor:pointer;transition:.25s}
+.col-close:hover{color:var(--accent);border-color:var(--accent)}
+.col-lbl{display:block;font-family:var(--font-m);font-size:.66rem;color:var(--dim);
+  letter-spacing:.25em;text-transform:uppercase;margin-bottom:10px}
+#colSelect{width:100%;appearance:none;-webkit-appearance:none;background:#181a19;
+  border:1px solid var(--line);border-radius:10px;padding:12px 40px 12px 14px;color:var(--text);
+  font-family:var(--font-m);font-size:.85rem;cursor:pointer;outline:none;transition:border-color .25s;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a8a8a' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 15px center}
+#colSelect:hover,#colSelect:focus{border-color:var(--accent)}
+#colSelect option{background:#181a19;color:var(--text)}
+.col-swatches{display:flex;gap:11px;margin-top:18px}
+.col-swatches button{width:22px;height:22px;border-radius:50%;cursor:pointer;
+  background:var(--c);border:2px solid transparent;
+  box-shadow:0 0 10px var(--c);transition:transform .2s,border-color .2s}
+.col-swatches button:hover{transform:scale(1.2)}
+.col-swatches button.on{border-color:#fff;transform:scale(1.15)}
+.col-hint{font-family:var(--font-m);font-size:.63rem;color:var(--dim);
+  letter-spacing:.08em;margin-top:18px}
 
 /* ── Установка ── */
 .steps{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;max-width:1000px}
@@ -424,7 +448,7 @@ footer{border-top:1px solid var(--line);padding:0 0 40px;overflow:hidden}
 .foot-track span{font-family:var(--font-d);font-weight:800;text-transform:uppercase;
   font-size:clamp(3.4rem,9vw,8rem);line-height:1;white-space:nowrap;padding-right:5vw;
   color:transparent;-webkit-text-stroke:1px #2e2e2e;transition:.3s}
-.foot-marquee:hover .foot-track span{-webkit-text-stroke-color:rgba(0,255,170,.5)}
+.foot-marquee:hover .foot-track span{-webkit-text-stroke-color:rgba(var(--accent-rgb),.5)}
 .foot-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
   gap:14px;padding:0 clamp(18px,5vw,64px);font-family:var(--font-m);font-size:.75rem;color:var(--dim)}
 .foot-row a{color:var(--dim);transition:.2s}

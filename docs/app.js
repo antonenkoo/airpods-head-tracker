@@ -67,6 +67,7 @@ const L = {
     i4:'Put your AirPods on, look straight and press <b>Calibrate</b>. Done.',
     noteB:'Why the warning on first launch?', noteT:'The app is open source and signed without a paid Apple Developer ID, so Gatekeeper shows a one-time warning. If right-click → Open doesn’t help, run:',
     r1:'macOS 14 Sonoma+', r2:'AirPods Pro / Max / 3+', r3:'AirPods as audio output', r4:'Apple Silicon & Intel',
+    colTitle:'theme --neon-color', colLbl:'pick your neon', colHint:'you typed «col» — that’s how you got here',
     footMade:'Built with CMHeadphoneMotionManager · MIT license',
   },
   ru: {
@@ -126,6 +127,7 @@ const L = {
     i4:'Надень AirPods, посмотри прямо и нажми <b>«Калибровать»</b>. Готово.',
     noteB:'Почему предупреждение при первом запуске?', noteT:'Приложение с открытым кодом и подписано без платного Apple Developer ID, поэтому Gatekeeper один раз покажет предупреждение. Если правый клик → Open не помог, выполни:',
     r1:'macOS 14 Sonoma+', r2:'AirPods Pro / Max / 3+', r3:'AirPods как аудиовыход', r4:'Apple Silicon и Intel',
+    colTitle:'theme --neon-color', colLbl:'выбери свой неон', colHint:'ты набрал «col» — так сюда и попадают',
     footMade:'Работает на CMHeadphoneMotionManager · Лицензия MIT',
   },
 };
@@ -552,25 +554,64 @@ ScrollTrigger.create({
   },
 });
 
-/* ═══ Тема Tokyo Rain ════════════════════════════════════════════════ */
+/* ═══ Неоновые темы (модалка по комбинации «col») ═══════════════════ */
 const THEMES = {
-  green: { hex: 0x00ffaa, css: '#00ffaa', second: '#33b5e5' },
-  rain:  { hex: 0xff5ad1, css: '#ff5ad1', second: '#8f6bff' },
+  green:  { label: 'Shibuya Green', hex: 0x00ffaa, css: '#00ffaa', second: '#33b5e5' },
+  rain:   { label: 'Tokyo Rain',    hex: 0xff5ad1, css: '#ff5ad1', second: '#8f6bff' },
+  cyan:   { label: 'Hong Kong Ice', hex: 0x00e5ff, css: '#00e5ff', second: '#4d8dff' },
+  violet: { label: 'Ultraviolet',   hex: 0xb44dff, css: '#b44dff', second: '#ff5ad1' },
+  amber:  { label: 'Osaka Amber',   hex: 0xffb300, css: '#ffb300', second: '#ff6a3d' },
+  red:    { label: 'Kabukicho Red', hex: 0xff3d5a, css: '#ff3d5a', second: '#ff8a00' },
 };
+const colModal = $('#colModal'), colSelect = $('#colSelect'), colSwatches = $('#colSwatches');
+Object.entries(THEMES).forEach(([name, th]) => {
+  const opt = document.createElement('option');
+  opt.value = name; opt.textContent = th.label;
+  colSelect.appendChild(opt);
+  const sw = document.createElement('button');
+  sw.dataset.theme = name; sw.title = th.label;
+  sw.style.setProperty('--c', th.css);
+  sw.addEventListener('click', () => applyTheme(name));
+  colSwatches.appendChild(sw);
+});
 function applyTheme(name) {
-  const th = THEMES[name] || THEMES.green;
-  document.body.classList.toggle('theme-rain', name === 'rain');
+  if (!THEMES[name]) name = 'green';
+  const th = THEMES[name];
+  Object.keys(THEMES).forEach(k =>
+    document.body.classList.toggle('theme-' + k, k === name && k !== 'green'));
   themeAccentHex = th.hex; themeAccentCss = th.css;
   themeMats.forEach(m => m.color.set(th.hex));
   if (drawFace) drawFace();               // перерисовать FACE в новом цвете
   loadParticles(th.css, th.second);
   localStorage.setItem('theme', name);
-  $('#themeBtn').classList.toggle('on', name === 'rain');
+  colSelect.value = name;
+  $$('#colSwatches button').forEach(b => b.classList.toggle('on', b.dataset.theme === name));
+  $('#themeBtn').classList.toggle('on', name !== 'green');
 }
-$('#themeBtn').addEventListener('click', () => {
-  applyTheme(document.body.classList.contains('theme-rain') ? 'green' : 'rain');
-});
-if (localStorage.getItem('theme') === 'rain') applyTheme('rain');
+colSelect.addEventListener('change', () => applyTheme(colSelect.value));
+const openColorModal  = () => { colModal.classList.add('show'); colSelect.focus(); };
+const closeColorModal = () => colModal.classList.remove('show');
+$('#colClose').addEventListener('click', closeColorModal);
+colModal.addEventListener('click', e => { if (e.target === colModal) closeColorModal(); });
+addEventListener('keydown', e => { if (e.key === 'Escape') closeColorModal(); });
+$('#themeBtn').addEventListener('click', openColorModal);
+/* комбинация «col» открывает модалку — как «sit», только про цвет */
+{
+  let buf = '';
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    buf = (buf + e.key.toLowerCase()).slice(-3);
+    if (buf !== 'col') return;
+    buf = '';
+    openColorModal();
+  });
+}
+/* восстановить сохранённую тему (green уже применён по умолчанию) */
+{
+  const saved = localStorage.getItem('theme');
+  if (saved && saved !== 'green' && THEMES[saved]) applyTheme(saved);
+  else { colSelect.value = 'green'; $('#colSwatches button')?.classList.add('on'); }
+}
 
 /* ═══ Витрина приложения: tilt + вынос-подписи ═══════════════════════ */
 const shot = $('#shotFrame');
