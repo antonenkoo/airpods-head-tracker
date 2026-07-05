@@ -20,9 +20,13 @@ body{background:var(--bg);color:var(--text);
 /* ── Мобильный layout (по умолчанию) ── */
 .page{display:flex;flex-direction:column;align-items:center;
   padding:20px 14px 36px;gap:14px}
-header{text-align:center;width:100%;max-width:400px}
-h1{font-size:1.4rem;color:var(--accent);margin-bottom:3px}
-.subtitle{font-size:.8rem;color:var(--dim);margin-bottom:6px}
+/* Шапка: слева название + статус в одну строку, справа чипы; группы не сжимаются */
+header{width:100%;display:flex;align-items:center;justify-content:space-between;
+  gap:14px;flex-wrap:wrap}
+.hdr-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1 1 auto}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:auto}
+h1{font-size:1.2rem;color:var(--accent);white-space:nowrap;flex-shrink:0}
+.ver-chip,.fb-open{white-space:nowrap}
 .left-col,.right-col{display:contents}
 .left-top,.left-bot{display:contents}
 
@@ -205,7 +209,8 @@ button:active{opacity:.65}
 .btn-muted{background:#252525;color:#777;border:1px solid #3a3a3a;font-size:.8rem}
 
 /* Статус соединения */
-.conn{font-size:.75rem;text-align:center;padding:4px 0}
+.conn{font-size:.75rem;padding:4px 0;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0}
 .conn.ok{color:var(--accent)}.conn.warn{color:var(--warn)}.conn.err{color:var(--red)}
 
 /* ── Desktop layout (≥900px) ── */
@@ -223,12 +228,7 @@ button:active{opacity:.65}
     max-width:1400px;margin:0 auto;
     padding:10px 18px 10px;gap:8px;
   }
-  header{
-    grid-area:hd;display:flex;align-items:baseline;gap:16px;
-    justify-content:space-between;
-  }
-  h1{font-size:1.2rem;margin-bottom:0}
-  .subtitle{display:none}
+  header{grid-area:hd}
 
   /* левая колонка: верх (куб) и низ (граф) поровну */
   .left-col{
@@ -293,12 +293,11 @@ button:active{opacity:.65}
 <div class="page">
 
   <header>
-    <div>
+    <div class="hdr-left">
       <h1>🎧 <span data-i18n="title">AirPods · Posture</span></h1>
-      <div class="subtitle" data-i18n="subtitle">Sit straight → “Calibrate” → wear your AirPods</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px">
       <div class="conn warn" id="conn">Connecting…</div>
+    </div>
+    <div class="hdr-right">
       <button class="ver-chip" id="verChip" title="Release notes">v—</button>
       <button class="fb-open" id="fbOpen" data-i18n="fbOpen">Feedback</button>
       <div class="lang-sw">
