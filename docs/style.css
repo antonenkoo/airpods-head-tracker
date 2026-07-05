@@ -252,6 +252,8 @@ h2:hover{animation:rgbsplit 320ms steps(2) 1}
     drop-shadow(0 0 38px rgba(var(--accent-rgb),.55))
     drop-shadow(0 0 90px rgba(var(--accent-rgb),.35));
   animation:neonHum 8s infinite}
+/* на тач-устройствах вывеска — тайная кнопка выбора цвета */
+@media(pointer:coarse){.neon-jp{cursor:pointer;-webkit-tap-highlight-color:transparent}}
 .neon-sub{display:block;margin-top:26px;font-family:var(--font-m);font-size:.78rem;
   letter-spacing:.5em;text-transform:uppercase;color:var(--tube-sub);
   text-shadow:0 0 8px var(--blue),0 0 26px var(--blue);

@@ -68,6 +68,7 @@ const L = {
     noteB:'Why the warning on first launch?', noteT:'The app is open source and signed without a paid Apple Developer ID, so Gatekeeper shows a one-time warning. If right-click → Open doesn’t help, run:',
     r1:'macOS 14 Sonoma+', r2:'AirPods Pro / Max / 3+', r3:'AirPods as audio output', r4:'Apple Silicon & Intel',
     colTitle:'theme --neon-color', colLbl:'pick your neon', colHint:'you typed «col» — that’s how you got here',
+    colHintTouch:'you tapped the neon sign — that’s how you got here',
     footMade:'Built with CMHeadphoneMotionManager · MIT license',
   },
   ru: {
@@ -128,6 +129,7 @@ const L = {
     noteB:'Почему предупреждение при первом запуске?', noteT:'Приложение с открытым кодом и подписано без платного Apple Developer ID, поэтому Gatekeeper один раз покажет предупреждение. Если правый клик → Open не помог, выполни:',
     r1:'macOS 14 Sonoma+', r2:'AirPods Pro / Max / 3+', r3:'AirPods как аудиовыход', r4:'Apple Silicon и Intel',
     colTitle:'theme --neon-color', colLbl:'выбери свой неон', colHint:'ты набрал «col» — так сюда и попадают',
+    colHintTouch:'ты тапнул по вывеске — так сюда и попадают',
     footMade:'Работает на CMHeadphoneMotionManager · Лицензия MIT',
   },
 };
@@ -595,6 +597,11 @@ $('#colClose').addEventListener('click', closeColorModal);
 colModal.addEventListener('click', e => { if (e.target === colModal) closeColorModal(); });
 addEventListener('keydown', e => { if (e.key === 'Escape') closeColorModal(); });
 $('#themeBtn').addEventListener('click', openColorModal);
+/* на телефоне клавиатуры нет — модалку открывает тап по неоновой вывеске */
+if (!fine) {
+  $('.neon-jp').addEventListener('click', openColorModal);
+  $('.col-hint').dataset.i18n = 'colHintTouch';   // setLang подставит текст про тап
+}
 /* комбинация «col» открывает модалку — как «sit», только про цвет */
 {
   let buf = '';
