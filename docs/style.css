@@ -37,6 +37,9 @@ a{color:var(--accent);text-decoration:none}
   50%{transform:translate(30px,-45px)}75%{transform:translate(-25px,-20px)}100%{transform:translate(0,0)}}
 #scanlines{position:fixed;inset:0;z-index:89;pointer-events:none;opacity:.04;
   background:repeating-linear-gradient(0deg,transparent 0 2px,#000 2px 4px)}
+#rain{position:fixed;inset:0;z-index:88;pointer-events:none;
+  mix-blend-mode:screen;opacity:.55}
+.no-motion #rain{display:none}
 #progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;
   transform-origin:0 50%;transform:scaleX(0);
   background:linear-gradient(90deg,var(--accent),var(--blue))}

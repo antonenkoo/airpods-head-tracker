@@ -773,6 +773,99 @@ if (asciiEl) {
   }, 90);
 }
 
+
+/* ═══ Токийский дождь ════════════════════════════════════════════════ */
+/* канвас-оверлей на весь экран: три слоя глубины, капли в цвет активной
+   неоновой темы, всплески у нижней кромки; набери «rain», и морось
+   превратится в ливень */
+if (!noMotion) {
+  const cv = $('#rain'), ctx = cv.getContext('2d');
+  const DPR = Math.min(2, devicePixelRatio);
+  let W = 0, H = 0;
+  const resizeRain = () => {
+    W = cv.width  = Math.ceil(innerWidth  * DPR);
+    H = cv.height = Math.ceil(innerHeight * DPR);
+  };
+  resizeRain();
+  addEventListener('resize', resizeRain);
+
+  // дальний слой: тонкий и медленный; ближний: жирный и быстрый
+  const LAYERS = [
+    { n: 0.026, speed: 10, len: 13, w: 1.0, a: 0.20 },
+    { n: 0.020, speed: 16, len: 21, w: 1.4, a: 0.38 },
+    { n: 0.012, speed: 23, len: 32, w: 1.9, a: 0.60, splash: true },
+  ];
+  const WIND = 0.18;                       // наклон капель (ветер слева)
+  let storm = false;
+  const drops = [], splashes = [];
+  const spawn = (l, anywhere) => ({
+    l,
+    x: Math.random() * (W + H * WIND),
+    y: anywhere ? Math.random() * H : -(l.len + Math.random() * 40) * DPR,
+    v: (l.speed + Math.random() * 6) * DPR,
+  });
+  const fill = () => {
+    drops.length = 0;
+    const mul = storm ? 3.2 : 1;
+    LAYERS.forEach(l => {
+      const count = Math.round(innerWidth * l.n * mul);
+      for (let i = 0; i < count; i++) drops.push(spawn(l, true));
+    });
+  };
+  fill();
+  addEventListener('resize', fill);
+
+  let prev = performance.now();
+  (function rainLoop(now) {
+    requestAnimationFrame(rainLoop);
+    const dt = Math.min(3, (now - prev) / 16.7); prev = now;
+    if (document.hidden) return;
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = themeAccentCss;
+    const vMul = storm ? 1.5 : 1;
+    for (const d of drops) {
+      const vy = d.v * vMul * dt, vx = vy * WIND;
+      d.x -= vx; d.y += vy;
+      if (d.y - d.l.len * DPR > H) {
+        // ближний слой иногда оставляет всплеск у нижней кромки
+        if (d.l.splash && splashes.length < 50 && Math.random() < 0.4)
+          splashes.push({ x: d.x, y: H - (2 + Math.random() * 26) * DPR, r: 1, life: 1 });
+        Object.assign(d, spawn(d.l, false));
+        continue;
+      }
+      ctx.globalAlpha = d.l.a;
+      ctx.lineWidth = d.l.w * DPR;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x + d.l.len * DPR * WIND, d.y - d.l.len * DPR);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1 * DPR;
+    for (let i = splashes.length - 1; i >= 0; i--) {
+      const s = splashes[i];
+      s.r += 0.9 * DPR * dt; s.life -= 0.05 * dt;
+      if (s.life <= 0) { splashes.splice(i, 1); continue; }
+      ctx.globalAlpha = s.life * 0.35;
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y, s.r * 1.8, s.r * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  })(prev);
+
+  // пасхалка: «rain» включает и выключает ливень
+  let buf = '';
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    buf = (buf + e.key.toLowerCase()).slice(-4);
+    if (buf !== 'rain') return;
+    buf = '';
+    storm = !storm;
+    fill();
+  });
+}
+
 /* ═══ Инициализация текстов ══════════════════════════════════════════ */
 setLang(lang);
 document.title = t('baseTitle');
