@@ -10,6 +10,8 @@ if (noMotion) document.documentElement.classList.add('no-motion');
 /* буква по физической клавише: пасхалки работают на любой раскладке */
 const keyChar = e => e.code && e.code.startsWith('Key')
   ? e.code[3].toLowerCase() : e.key.toLowerCase();
+/* лог событий эффектов: фильтруй в консоли по «[rain]» */
+const rlog = (...a) => console.log('%c[rain]', 'color:#00ffaa;font-weight:bold', ...a);
 
 /* ═══ i18n ═══════════════════════════════════════════════════════════ */
 const L = {
@@ -613,6 +615,7 @@ if (!fine) {
     buf = (buf + keyChar(e)).slice(-3);
     if (buf !== 'col') return;
     buf = '';
+    rlog('слово «col»: открываю выбор темы');
     openColorModal();
   });
 }
@@ -712,6 +715,7 @@ if (guard) {
     buf = (buf + keyChar(e)).slice(-3);
     if (buf !== 'sit') return;
     buf = '';
+    rlog('слово «sit»: вспышка и конфетти');
     flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
     // вывеска на 4 секунды меняет текст
     const jp = $('.neon-jp');
@@ -785,6 +789,7 @@ if (asciiEl) {
    экрана работает как пол. Дождь начинается сам после трёх минут на
    странице, плавно; слово «rain» (на любой раскладке) включает его
    сразу и им же выключается */
+if (noMotion) rlog('prefers-reduced-motion: дождь полностью отключён');
 if (!noMotion) {
   const cv = $('#rain'), ctx = cv.getContext('2d');
   const DPR = Math.min(2, devicePixelRatio);
@@ -795,6 +800,7 @@ if (!noMotion) {
   };
   resizeRain();
   addEventListener('resize', resizeRain);
+  rlog(`инициализация: канвас ${W}x${H}, DPR ${DPR}`);
 
   // дальний слой: тонкий и медленный; ближний: жирный и быстрый
   const LAYERS = [
@@ -827,13 +833,20 @@ if (!noMotion) {
     if (active === on) return;
     active = on;
     cv.classList.toggle('on', on);
+    rlog(on ? `дождь включается: fade-in 2.5s, капель ${drops.length}`
+            : 'дождь выключается: fade-out 2.5s');
     if (!on) {
       lastOff = performance.now();
       hoverEl?.classList.remove('rain-hover');
       hoverEl = null;
     }
   }
-  setTimeout(() => { if (!manual) setRain(true); }, 180000);
+  rlog('таймер взведён: автостарт дождя через 3 минуты (или слово «rain»)');
+  setTimeout(() => {
+    if (manual) { rlog('3 минуты прошли, но дождём уже управляли вручную, автостарт отменён'); return; }
+    rlog('3 минуты на странице: автостарт дождя');
+    setRain(true);
+  }, 180000);
 
   /* блок под курсором становится препятствием: рамка на отступе PAD,
      капли бьются о её верхнюю грань */
@@ -847,6 +860,7 @@ if (!noMotion) {
     hoverEl?.classList.remove('rain-hover');
     hoverEl = el;
     hoverEl?.classList.add('rain-hover');
+    if (el) rlog('препятствие под курсором:', el.className.replace(' rain-hover', ''));
   });
 
   // удар: капля разлетается брызгами-бусинами, дугой вверх и обратно
@@ -930,6 +944,7 @@ if (!noMotion) {
     if (buf !== 'rain') return;
     buf = '';
     manual = true;
+    rlog('слово «rain» набрано: переключаю дождь', active ? 'выкл' : 'вкл');
     setRain(!active);
     if (active) fill();
   });
