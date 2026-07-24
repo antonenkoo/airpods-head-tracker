@@ -450,7 +450,11 @@ body.theme-red{--accent:#ff3d5a;--accent-rgb:255,61,90;--blue:#ff8a00;--blue-rgb
 
 /* ── Футер ── */
 footer{border-top:1px solid var(--line);padding:0 0 40px;overflow:hidden}
-.foot-marquee{overflow:hidden;padding:6vh 0 5vh}
+.foot-marquee{overflow:hidden;padding:6vh 0 5vh;position:relative}
+#footPts{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
+/* когда строка отрисовывается частицами — прячем контурный текст, показываем канвас */
+.foot-particles .foot-track{opacity:0}
+.foot-particles #footPts{display:block}
 .foot-track{display:flex;width:max-content;animation:mq 20s linear infinite}
 .foot-track span{font-family:var(--font-d);font-weight:800;text-transform:uppercase;
   font-size:clamp(3.4rem,9vw,8rem);line-height:1;white-space:nowrap;padding-right:5vw;

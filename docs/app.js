@@ -1067,6 +1067,109 @@ if (!noMotion) {
   });
 }
 
+/* ═══ Частицы бегущей строки в футере ════════════════════════════════ */
+/* строка собирается из частиц (техника ParticleSlider: сэмплинг пикселей
+   текста → цели-«гравитации», притяжение dist*grav, трение, отталкивание
+   мышью force/dist²). Пресет подобран Марком в конфигураторе. Работает
+   только при motion и когда футер в зоне видимости; иначе виден обычный
+   контурный текст */
+if (!noMotion) (function footParticles(){
+  const cv = $('#footPts'), box = $('.foot-marquee'), track = $('.foot-track span');
+  if (!cv || !box || !track) return;
+  const ctx = cv.getContext('2d');
+  const DPR = Math.min(2, devicePixelRatio);
+  const P = { gap:1, size:1.5, grav:0.018, fric:0.8, mouse:15000, radius:240, scroll:2.1, jit:0.12, glow:0 };
+  const TEXT = (track.textContent || 'Move freely — ').trim().toUpperCase() + '  ';
+
+  let VW=0, VH=0;
+  function resize(){
+    const r = box.getBoundingClientRect();
+    VW = Math.max(1, r.width); VH = Math.max(1, r.height);
+    cv.width = Math.ceil(VW*DPR); cv.height = Math.ceil(VH*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+
+  let TW=0, TH=0, OY=0, particles=[], scrollPx=0;
+  function sample(){
+    // размер шрифта = как у контурной строки, но на 20% крупнее
+    const cssPx = parseFloat(getComputedStyle(track).fontSize) || 90;
+    const FONT_PX = cssPx * 1.2;
+    const oc = document.createElement('canvas'), octx = oc.getContext('2d');
+    const font = `800 ${FONT_PX}px Unbounded, "Space Grotesk", sans-serif`;
+    octx.font = font;
+    const tw = Math.ceil(octx.measureText(TEXT).width);
+    oc.width = Math.max(1, tw); oc.height = Math.ceil(FONT_PX*1.35);
+    octx.font = font; octx.textBaseline='middle'; octx.fillStyle='#fff';
+    octx.fillText(TEXT, 0, oc.height/2);
+    const data = octx.getImageData(0,0,oc.width,oc.height).data;
+    const step = P.gap + 1, pts = [];
+    for (let x=0; x<oc.width; x+=step)
+      for (let y=0; y<oc.height; y+=step)
+        if (data[(y*oc.width+x)*4+3] > 128) pts.push({ gx:x, gy:y });
+    return { pts, tw, th: oc.height };
+  }
+  function rebuild(){
+    resize();
+    const s = sample();
+    TW = s.tw; TH = s.th; OY = (VH - TH)/2;
+    const prev = particles;
+    particles = s.pts.map((p,i)=>{
+      const o = prev[i];
+      return { gx:p.gx, gy:p.gy, k:0,
+        x:o? o.x : Math.random()*VW, y:o? o.y : Math.random()*VH, vx:0, vy:0 };
+    });
+  }
+
+  // мышь в координатах канваса
+  const mouse = { x:-1, y:-1 };
+  if (fine) addEventListener('mousemove', e=>{
+    const r = cv.getBoundingClientRect();
+    mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top;
+  });
+
+  let visible = false, built = false;
+  const PAD = 100;
+  let prev = performance.now();
+  (function loop(now){
+    requestAnimationFrame(loop);
+    const dt = Math.min(3, (now-prev)/16.7); prev = now;
+    if (!visible || document.hidden || !particles.length) return;
+    scrollPx += P.scroll * dt;
+    ctx.clearRect(0,0,VW,VH);
+    ctx.fillStyle = themeAccentCss;
+    ctx.shadowBlur = P.glow; ctx.shadowColor = P.glow ? themeAccentCss : 'transparent';
+    const mR2 = P.radius*P.radius, r = P.size/2;
+    for (const p of particles){
+      let raw = p.gx - scrollPx + p.k*TW;
+      if (raw < -PAD){ p.k += 1; raw += TW; p.x += TW; }
+      const tx = raw, ty = OY + p.gy;
+      const cx = tx - p.x, cy = ty - p.y;
+      const dist = Math.hypot(cx, cy) || 0.001, ang = Math.atan2(cy, cx);
+      const g = dist*P.grav + (Math.random()*P.jit*2 - P.jit);
+      let hx=0, hy=0;
+      if (mouse.x >= 0){
+        const jx = p.x - mouse.x, jy = p.y - mouse.y, d2 = jx*jx + jy*jy;
+        if (d2 < mR2){ const h = Math.min(P.mouse/(d2+1), P.mouse), ma = Math.atan2(jy, jx);
+          hx = h*Math.cos(ma); hy = h*Math.sin(ma); }
+      }
+      p.vx += g*Math.cos(ang) + hx*0.02;
+      p.vy += g*Math.sin(ang) + hy*0.02;
+      p.vx *= P.fric; p.vy *= P.fric;
+      p.x += p.vx; p.y += p.vy;
+      ctx.fillRect(p.x - r, p.y - r, P.size, P.size);
+    }
+  })(prev);
+
+  new IntersectionObserver(es=>{
+    visible = es[0].isIntersecting;
+    if (visible && !built){ built = true; document.body.classList.add('foot-particles'); rebuild(); }
+  }, { threshold:0.05 }).observe(box);
+
+  let rt;
+  addEventListener('resize', ()=>{ clearTimeout(rt); rt = setTimeout(()=>{ if (built) rebuild(); }, 200); });
+  document.fonts?.ready.then(()=>{ if (built) rebuild(); });
+})();
+
 /* ═══ Инициализация текстов ══════════════════════════════════════════ */
 setLang(lang);
 document.title = t('baseTitle');
