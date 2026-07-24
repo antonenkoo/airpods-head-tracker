@@ -811,9 +811,27 @@ if (!noMotion) {
   const drops = [], droplets = [], drips = [];
   let pool = null;                  // плёнка воды на грани блока под ховером
   const COLW = 6;                   // колонка воды, CSS px
-  // профиль плато, подобран Марком в конфигураторе (2026-07-24, v11)
-  const WATER = { flat: 0.62, inset: 2, cap: 4.5, gain: 0.08, evap: 4,
-    drip: 0.1, dripStart: 48, ripple: 0.1 };
+  // профиль плато + линия подсветки, пресет Марка (2026-07-24, v14)
+  const WATER = { flat: 0.62, inset: 0, cap: 3, gain: 0.02, evap: 0,
+    drip: 0.05, dripStart: 0, ripple: 0.1 };
+  const LINE = { lineW: 1.5, lineSpan: 1, lineR: 3 };
+  /* опорная поверхность = линия подсветки: капли, плато и стекание
+     ориентируются по ней, включая загибы на концах. yAt(x) — высота линии
+     в точке x (следует квадратичным загибам), null если x вне охвата */
+  let surf = null;
+  function makeSurf(ob){
+    const cx = (ob.left + ob.right) / 2;
+    const half = (ob.right - ob.left) / 2 * LINE.lineSpan;
+    const x0 = cx - half, x1 = cx + half, top = ob.top, R = Math.min(LINE.lineR, half);
+    return { x0, x1, top, R,
+      yAt(x){
+        if (x < x0 || x > x1) return null;
+        if (R <= 0) return top;
+        if (x < x0 + R){ const t = Math.sqrt((x - x0) / R); return top + (1 - t) * (1 - t) * R; }
+        if (x > x1 - R){ const s = (x - (x1 - R)) / R, t = 1 - Math.sqrt(1 - s); return top + t * t * R; }
+        return top;
+      } };
+  }
   function addWater(cssX, amt) {
     if (!pool) return;
     const i = Math.max(0, Math.min(pool.cols.length - 1, Math.floor((cssX - pool.x0) / COLW)));
@@ -904,34 +922,45 @@ if (!noMotion) {
     if (hoverEl) {
       const r = hoverEl.getBoundingClientRect();
       ob = { left: r.left - PAD, right: r.right + PAD, top: r.top - PAD, bottom: r.bottom + PAD };
-      if (!pool || pool.el !== hoverEl)
-        pool = { el: hoverEl,
-          cols: new Array(Math.max(1, Math.ceil((ob.right - ob.left) / COLW))).fill(0) };
-      pool.x0 = ob.left; pool.x1 = ob.right; pool.y = ob.top;
+    }
+    surf = ob ? makeSurf(ob) : null;
+    if (surf) {
+      const want = Math.max(1, Math.ceil((surf.x1 - surf.x0) / COLW));
+      if (!pool || pool.el !== hoverEl || pool.cols.length !== want)
+        pool = { el: hoverEl, cols: new Array(want).fill(0) };
+      pool.x0 = surf.x0; pool.x1 = surf.x1; pool.surf = surf;
     } else pool = null;
     ctx.clearRect(0, 0, W, H);
     ctx.lineCap = 'round';
     ctx.strokeStyle = themeAccentCss;
     ctx.fillStyle = themeAccentCss;
-    // подсветка блока под курсором — только ровная линия по верхней грани
-    if (ob) {
+    // подсветка блока под курсором — линия по верхней грани с загнутыми концами
+    if (surf) {
+      const { x0, x1, top, R } = surf;
       ctx.save();
-      ctx.lineCap = 'butt';
-      ctx.lineWidth = 1.5 * DPR;
-      ctx.globalAlpha = 0.9;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = LINE.lineW * DPR; ctx.globalAlpha = 0.9;
       ctx.beginPath();
-      ctx.moveTo(ob.left * DPR, ob.top * DPR);
-      ctx.lineTo(ob.right * DPR, ob.top * DPR);
+      if (R > 0) {
+        ctx.moveTo(x0 * DPR, (top + R) * DPR);
+        ctx.quadraticCurveTo(x0 * DPR, top * DPR, (x0 + R) * DPR, top * DPR);
+        ctx.lineTo((x1 - R) * DPR, top * DPR);
+        ctx.quadraticCurveTo(x1 * DPR, top * DPR, x1 * DPR, (top + R) * DPR);
+      } else {
+        ctx.moveTo(x0 * DPR, top * DPR);
+        ctx.lineTo(x1 * DPR, top * DPR);
+      }
       ctx.stroke();
       ctx.restore();
     }
     for (const d of drops) {
       const vy = d.v * dt;
       d.y += vy;
-      if (ob) {
+      if (surf) {
         const px = d.x / DPR, prevY = (d.y - vy) / DPR, curY = d.y / DPR;
-        if (px >= ob.left && px <= ob.right && prevY <= ob.top && curY >= ob.top) {
-          impact(d.x, ob.top * DPR, d.l, true);
+        const sy = surf.yAt(px);
+        if (sy != null && prevY <= sy && curY >= sy) {
+          impact(d.x, sy * DPR, d.l, true);
           Object.assign(d, spawn(d.l, false));
           continue;
         }
@@ -955,14 +984,16 @@ if (!noMotion) {
       p.x += p.vx * dt; p.y += p.vy * dt;
       // брызги тоже физические: отбиваются от грани и от пола,
       // а упавшие обратно на грань чаще впитываются в плёнку воды
-      if (ob && p.vy > 0 && p.x >= ob.left * DPR && p.x <= ob.right * DPR &&
-          prevPy <= ob.top * DPR && p.y >= ob.top * DPR) {
-        if (pool && !p.spark && Math.random() < 0.6) {
-          addWater(p.x / DPR, WATER.gain * 0.42);
-          droplets.splice(i, 1);
-          continue;
+      if (surf) {
+        const sy = surf.yAt(p.x / DPR);
+        if (sy != null && p.vy > 0 && prevPy <= sy * DPR && p.y >= sy * DPR) {
+          if (pool && !p.spark && Math.random() < 0.6) {
+            addWater(p.x / DPR, WATER.gain * 0.42);
+            droplets.splice(i, 1);
+            continue;
+          }
+          p.y = sy * DPR; p.vy = -p.vy * 0.45; p.vx *= 0.92;
         }
-        p.y = ob.top * DPR; p.vy = -p.vy * 0.45; p.vx *= 0.92;
       }
       if (p.vy > 0 && p.y >= H) { p.y = H; p.vy = -p.vy * 0.45; p.vx *= 0.92; }
       p.life -= (p.spark ? 0.09 : 0.03) * dt;
@@ -994,7 +1025,9 @@ if (!noMotion) {
       const edge = (i, edgeX, side) => {
         if (c[i] > 0.22 && drips.length < 48 && Math.random() < 0.35 * WATER.drip * dt) {
           c[i] -= 0.14;
-          drips.push({ xB: edgeX + side * 2.2, y: pool.y + WATER.dripStart, vy: 0.18,
+          // старт струйки — на загнутом конце линии (yAt = top+R), плюс смещение
+          const y0 = (pool.surf.yAt(edgeX) ?? pool.surf.top) + WATER.dripStart;
+          drips.push({ xB: edgeX + side * 2.2, y: y0, vy: 0.18,
             seed: Math.random() * Math.PI * 2, life: 3 });
         }
       };
@@ -1013,7 +1046,10 @@ if (!noMotion) {
         if (lvl < 0.06) continue;
         // рябь расходится радиально: из центра слоя к обоим краям
         const h = WATER.cap * lvl * (1 + WATER.ripple * Math.sin(tnow / 260 - Math.abs(i - (L - 1) / 2) * 0.9)) * DPR;
-        const x = (pool.x0 + i * COLW) * DPR, y = pool.y * DPR;
+        const colX = pool.x0 + i * COLW;
+        // основание колонки лежит на линии — на углах опускается с загибом
+        const baseY = (pool.surf.yAt(colX + COLW / 2) ?? pool.surf.top);
+        const x = colX * DPR, y = baseY * DPR;
         ctx.globalAlpha = 0.3;
         ctx.fillRect(x, y - h, COLW * DPR + 1, h);
         ctx.globalAlpha = 0.7;
@@ -1035,9 +1071,11 @@ if (!noMotion) {
       if (onSide && Math.random() < 0.01 * dt && droplets.length < 260)
         droplets.push({ x: p.xB * DPR, y: p.y * DPR, vx: 0, vy: 0.6 * DPR, life: 0.8 });
       const wob = yy => p.xB + (onSide ? Math.sin(yy * 0.06 + p.seed) * 1.4 : 0);
+      const qx = surf ? Math.max(surf.x0, Math.min(surf.x1, p.xB)) : 0;
+      const startY = (surf ? (surf.yAt(qx) ?? surf.top) : (ob ? ob.top : 0)) + WATER.dripStart;
       for (let k = 12; k >= 0; k--) {
         const yy = p.y - k * 3;
-        if (pool && yy < pool.y + WATER.dripStart - 2) continue;
+        if (pool && yy < startY - 2) continue;
         const a = Math.min(1, p.life) * (0.55 - k * 0.035);
         if (a <= 0) continue;
         ctx.globalAlpha = a;
