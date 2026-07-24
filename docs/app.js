@@ -808,7 +808,16 @@ if (!noMotion) {
     { n: 0.018, speed: 17, len: 24, w: 1.4, a: 0.40 },
     { n: 0.011, speed: 24, len: 36, w: 1.8, a: 0.62, splash: true },
   ];
-  const drops = [], droplets = [];
+  const drops = [], droplets = [], drips = [];
+  let pool = null;                  // плёнка воды на грани блока под ховером
+  const COLW = 6;                   // колонка воды, CSS px
+  // профиль плато, подобран Марком в конфигураторе (2026-07-24)
+  const WATER = { flat: 0.62, inset: 2, cap: 4.5, gain: 0.08, evap: 4, drip: 1, ripple: 0.1 };
+  function addWater(cssX, amt) {
+    if (!pool) return;
+    const i = Math.max(0, Math.min(pool.cols.length - 1, Math.floor((cssX - pool.x0) / COLW)));
+    pool.cols[i] = Math.min(1.6, pool.cols[i] + amt);
+  }
   const spawn = (l, anywhere) => ({
     l,
     x: Math.random() * W,
@@ -817,6 +826,7 @@ if (!noMotion) {
   });
   const fill = () => {
     drops.length = 0; droplets.length = 0;
+    drips.length = 0; pool = null;
     LAYERS.forEach(l => {
       const count = Math.round(innerWidth * l.n);
       for (let i = 0; i < count; i++) drops.push(spawn(l, true));
@@ -848,9 +858,9 @@ if (!noMotion) {
     setRain(true);
   }, 180000);
 
-  /* блок под курсором становится препятствием: рамка на отступе PAD,
-     капли бьются о её верхнюю грань */
-  const PAD = 3;
+  /* блок под курсором становится препятствием: рамка совпадает с границей
+     блока (offset 0), капли бьются о верхнюю грань */
+  const PAD = 0;
   const HOVERABLE = '.card, .btn-dl, .hero-chip, .stat, .step, .faq-item, ' +
     '.note, .story-block, .terminal, .ascii-box, .calc-box, .shot-frame, .neon-sign';
   let hoverEl = null;
@@ -863,16 +873,22 @@ if (!noMotion) {
     if (el) rlog('препятствие под курсором:', el.className.replace(' rain-hover', ''));
   });
 
-  // удар: капля разлетается брызгами-бусинами, дугой вверх и обратно
-  function impact(x, y, l) {
-    const n = l.splash ? 4 : 2 + (Math.random() < 0.5 ? 1 : 0);
-    for (let i = 0; i < n && droplets.length < 220; i++) {
-      droplets.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 3.6 * DPR,
-        vy: -(1.8 + Math.random() * 2.6) * DPR,
-        life: 1.1,
-      });
+  /* удар: корона из брызг под углами + быстрые искры-штрихи; на грани
+     блока часть капли уходит в плёнку воды */
+  function impact(x, y, l, onPool) {
+    if (onPool) addWater(x / DPR, WATER.gain * (l.splash ? 1.2 : 0.72));
+    const n = l.splash ? 7 : 4;
+    for (let i = 0; i < n && droplets.length < 260; i++) {
+      const a = (Math.random() * 1.15 + 0.12) * (Math.random() < 0.5 ? -1 : 1);
+      const s = (1.6 + Math.random() * 2.8) * DPR;
+      droplets.push({ x, y, vx: Math.sin(a) * s, vy: -Math.cos(a) * s,
+        life: 1.1, r: 0.9 + Math.random() * 0.9 });
+    }
+    for (let i = 0; i < 3 && droplets.length < 260; i++) {
+      const a = (Math.random() * 1.3 + 0.1) * (Math.random() < 0.5 ? -1 : 1);
+      const s = (3.2 + Math.random() * 2.4) * DPR;
+      droplets.push({ x, y, vx: Math.sin(a) * s, vy: -Math.cos(a) * s,
+        life: 0.45, spark: true });
     }
   }
 
@@ -886,8 +902,12 @@ if (!noMotion) {
     let ob = null;
     if (hoverEl) {
       const r = hoverEl.getBoundingClientRect();
-      ob = { left: r.left - PAD, right: r.right + PAD, top: r.top - PAD };
-    }
+      ob = { left: r.left - PAD, right: r.right + PAD, top: r.top - PAD, bottom: r.bottom + PAD };
+      if (!pool || pool.el !== hoverEl)
+        pool = { el: hoverEl,
+          cols: new Array(Math.max(1, Math.ceil((ob.right - ob.left) / COLW))).fill(0) };
+      pool.x0 = ob.left; pool.x1 = ob.right; pool.y = ob.top;
+    } else pool = null;
     ctx.clearRect(0, 0, W, H);
     ctx.lineCap = 'round';
     ctx.strokeStyle = themeAccentCss;
@@ -898,13 +918,13 @@ if (!noMotion) {
       if (ob) {
         const px = d.x / DPR, prevY = (d.y - vy) / DPR, curY = d.y / DPR;
         if (px >= ob.left && px <= ob.right && prevY <= ob.top && curY >= ob.top) {
-          impact(d.x, ob.top * DPR, d.l);
+          impact(d.x, ob.top * DPR, d.l, true);
           Object.assign(d, spawn(d.l, false));
           continue;
         }
       }
       if (d.y - d.l.len * DPR > H) {
-        if (Math.random() < 0.5) impact(d.x, H, d.l);
+        if (Math.random() < 0.5) impact(d.x, H, d.l, false);
         Object.assign(d, spawn(d.l, false));
         continue;
       }
@@ -920,17 +940,88 @@ if (!noMotion) {
       p.vy += 0.22 * DPR * dt;
       const prevPy = p.y;
       p.x += p.vx * dt; p.y += p.vy * dt;
-      // брызги тоже физические: отбиваются от рамки и от пола
+      // брызги тоже физические: отбиваются от грани и от пола,
+      // а упавшие обратно на грань чаще впитываются в плёнку воды
       if (ob && p.vy > 0 && p.x >= ob.left * DPR && p.x <= ob.right * DPR &&
           prevPy <= ob.top * DPR && p.y >= ob.top * DPR) {
+        if (pool && !p.spark && Math.random() < 0.6) {
+          addWater(p.x / DPR, WATER.gain * 0.42);
+          droplets.splice(i, 1);
+          continue;
+        }
         p.y = ob.top * DPR; p.vy = -p.vy * 0.45; p.vx *= 0.92;
       }
       if (p.vy > 0 && p.y >= H) { p.y = H; p.vy = -p.vy * 0.45; p.vx *= 0.92; }
-      p.life -= 0.03 * dt;
+      p.life -= (p.spark ? 0.09 : 0.03) * dt;
       if (p.life <= 0) { droplets.splice(i, 1); continue; }
       ctx.globalAlpha = p.life * 0.7;
+      if (p.spark) {
+        ctx.lineWidth = 1 * DPR;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * 2.2, p.y - p.vy * 2.2);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (p.r || 1.4) * DPR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    /* плёнка воды: растекается, испаряется; профиль-плато с отступом от
+       скруглённых углов; излишек у краёв огибает угол и стекает по боковой
+       грани блока струйками */
+    if (pool) {
+      const c = pool.cols, L = c.length;
+      for (let i = 0; i < L; i++) {
+        const nb = ((c[i - 1] ?? c[i]) + (c[i + 1] ?? c[i])) / 2;
+        c[i] += (nb - c[i]) * 0.14 * dt;
+        c[i] *= 1 - WATER.evap / 1000 * dt;
+      }
+      const edge = (i, sideX) => {
+        if (c[i] > 0.22 && drips.length < 48 && Math.random() < 0.35 * WATER.drip * dt) {
+          c[i] -= 0.14;
+          drips.push({ x: sideX * DPR, y: (pool.y + 10) * DPR, vy: 0.22 * DPR, life: 3 });
+        }
+      };
+      edge(0, pool.x0); edge(L - 1, pool.x1);
+      const W2 = pool.x1 - pool.x0, M = Math.min(WATER.inset, W2 * 0.25);
+      const env = i => {
+        const u = ((i + 0.5) * COLW - M) / Math.max(1, W2 - 2 * M);
+        if (u <= 0 || u >= 1) return 0;
+        const R = Math.max(0.04, (1 - WATER.flat) / 2);
+        const e = Math.min(1, Math.min(u, 1 - u) / R);
+        return e * e * (3 - 2 * e);
+      };
+      const tnow = performance.now();
+      for (let i = 0; i < L; i++) {
+        const lvl = Math.min(1, c[i]) * env(i);
+        if (lvl < 0.06) continue;
+        const h = WATER.cap * lvl * (1 + WATER.ripple * Math.sin(tnow / 260 + i * 0.8)) * DPR;
+        const x = (pool.x0 + i * COLW) * DPR, y = pool.y * DPR;
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(x, y - h, COLW * DPR + 1, h);
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(x, y - h, COLW * DPR + 1, 1.1 * DPR);
+      }
+    }
+    /* струйки: липнут к боковой грани, ниже нижней кромки блока переходят
+       в свободное падение */
+    for (let i = drips.length - 1; i >= 0; i--) {
+      const p = drips[i];
+      const onSide = pool && ob && p.y / DPR < ob.bottom;
+      p.vy = onSide ? Math.min(p.vy + 0.03 * DPR * dt, 1.1 * DPR)
+                    : p.vy + 0.2 * DPR * dt;
+      p.y += p.vy * dt;
+      p.life -= 0.006 * dt;
+      if (p.life <= 0 || p.y > H + 20 * DPR) { drips.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.min(1, p.life) * 0.65;
+      ctx.lineWidth = 1.3 * DPR;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 1.4 * DPR, 0, Math.PI * 2);
+      ctx.moveTo(p.x, p.y - 7 * DPR);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.5 * DPR, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
