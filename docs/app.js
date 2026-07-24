@@ -7,6 +7,11 @@ const $$ = s => [...document.querySelectorAll(s)];
 const fine = matchMedia('(pointer:fine)').matches;
 const noMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (noMotion) document.documentElement.classList.add('no-motion');
+/* буква по физической клавише: пасхалки работают на любой раскладке */
+const keyChar = e => e.code && e.code.startsWith('Key')
+  ? e.code[3].toLowerCase() : e.key.toLowerCase();
+/* лог событий эффектов: фильтруй в консоли по «[rain]» */
+const rlog = (...a) => console.log('%c[rain]', 'color:#00ffaa;font-weight:bold', ...a);
 
 /* ═══ i18n ═══════════════════════════════════════════════════════════ */
 const L = {
@@ -607,9 +612,10 @@ if (!fine) {
   let buf = '';
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    buf = (buf + e.key.toLowerCase()).slice(-3);
+    buf = (buf + keyChar(e)).slice(-3);
     if (buf !== 'col') return;
     buf = '';
+    rlog('слово «col»: открываю выбор темы');
     openColorModal();
   });
 }
@@ -706,9 +712,10 @@ if (guard) {
   let buf = '';
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    buf = (buf + e.key.toLowerCase()).slice(-3);
+    buf = (buf + keyChar(e)).slice(-3);
     if (buf !== 'sit') return;
     buf = '';
+    rlog('слово «sit»: вспышка и конфетти');
     flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
     // вывеска на 4 секунды меняет текст
     const jp = $('.neon-jp');
@@ -779,7 +786,10 @@ if (asciiEl) {
    темы, три слоя глубины, вид сбоку. Наведи курсор на карточку или
    кнопку: вокруг неё загорится тонкая рамка, и капли начнут отбиваться
    от её верхней грани брызгами, как в 2D-платформере. Нижняя кромка
-   экрана работает как пол. Набери «rain» — морось станет ливнем */
+   экрана работает как пол. Дождь начинается сам после трёх минут на
+   странице, плавно; слово «rain» (на любой раскладке) включает его
+   сразу и им же выключается */
+if (noMotion) rlog('prefers-reduced-motion: дождь полностью отключён');
 if (!noMotion) {
   const cv = $('#rain'), ctx = cv.getContext('2d');
   const DPR = Math.min(2, devicePixelRatio);
@@ -790,6 +800,7 @@ if (!noMotion) {
   };
   resizeRain();
   addEventListener('resize', resizeRain);
+  rlog(`инициализация: канвас ${W}x${H}, DPR ${DPR}`);
 
   // дальний слой: тонкий и медленный; ближний: жирный и быстрый
   const LAYERS = [
@@ -797,7 +808,6 @@ if (!noMotion) {
     { n: 0.018, speed: 17, len: 24, w: 1.4, a: 0.40 },
     { n: 0.011, speed: 24, len: 36, w: 1.8, a: 0.62, splash: true },
   ];
-  let storm = false;
   const drops = [], droplets = [];
   const spawn = (l, anywhere) => ({
     l,
@@ -807,14 +817,36 @@ if (!noMotion) {
   });
   const fill = () => {
     drops.length = 0; droplets.length = 0;
-    const mul = storm ? 3.2 : 1;
     LAYERS.forEach(l => {
-      const count = Math.round(innerWidth * l.n * mul);
+      const count = Math.round(innerWidth * l.n);
       for (let i = 0; i < count; i++) drops.push(spawn(l, true));
     });
   };
   fill();
   addEventListener('resize', fill);
+
+  /* дождь не идёт с порога: сам начинается после трёх минут на странице
+     (fade через CSS-переход на #rain), либо сразу по слову «rain»;
+     тем же словом выключается */
+  let active = false, manual = false, lastOff = -1e9;
+  function setRain(on) {
+    if (active === on) return;
+    active = on;
+    cv.classList.toggle('on', on);
+    rlog(on ? `дождь включается: fade-in 2.5s, капель ${drops.length}`
+            : 'дождь выключается: fade-out 2.5s');
+    if (!on) {
+      lastOff = performance.now();
+      hoverEl?.classList.remove('rain-hover');
+      hoverEl = null;
+    }
+  }
+  rlog('таймер взведён: автостарт дождя через 3 минуты (или слово «rain»)');
+  setTimeout(() => {
+    if (manual) { rlog('3 минуты прошли, но дождём уже управляли вручную, автостарт отменён'); return; }
+    rlog('3 минуты на странице: автостарт дождя');
+    setRain(true);
+  }, 180000);
 
   /* блок под курсором становится препятствием: рамка на отступе PAD,
      капли бьются о её верхнюю грань */
@@ -823,11 +855,12 @@ if (!noMotion) {
     '.note, .story-block, .terminal, .ascii-box, .calc-box, .shot-frame, .neon-sign';
   let hoverEl = null;
   if (fine) document.addEventListener('pointerover', e => {
-    const el = e.target.closest(HOVERABLE);
+    const el = active ? e.target.closest(HOVERABLE) : null;
     if (el === hoverEl) return;
     hoverEl?.classList.remove('rain-hover');
     hoverEl = el;
     hoverEl?.classList.add('rain-hover');
+    if (el) rlog('препятствие под курсором:', el.className.replace(' rain-hover', ''));
   });
 
   // удар: капля разлетается брызгами-бусинами, дугой вверх и обратно
@@ -848,6 +881,8 @@ if (!noMotion) {
     requestAnimationFrame(rainLoop);
     const dt = Math.min(3, (now - prev) / 16.7); prev = now;
     if (document.hidden) return;
+    // выключен и fade-out уже отыграл: не жжём CPU
+    if (!active && now - lastOff > 3000) return;
     let ob = null;
     if (hoverEl) {
       const r = hoverEl.getBoundingClientRect();
@@ -857,9 +892,8 @@ if (!noMotion) {
     ctx.lineCap = 'round';
     ctx.strokeStyle = themeAccentCss;
     ctx.fillStyle = themeAccentCss;
-    const vMul = storm ? 1.5 : 1;
     for (const d of drops) {
-      const vy = d.v * vMul * dt;
+      const vy = d.v * dt;
       d.y += vy;
       if (ob) {
         const px = d.x / DPR, prevY = (d.y - vy) / DPR, curY = d.y / DPR;
@@ -902,15 +936,17 @@ if (!noMotion) {
     ctx.globalAlpha = 1;
   })(prev);
 
-  // пасхалка: «rain» включает и выключает ливень
+  // секретное слово «rain»: включает дождь сразу, им же выключается
   let buf = '';
   addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    buf = (buf + e.key.toLowerCase()).slice(-4);
+    buf = (buf + keyChar(e)).slice(-4);
     if (buf !== 'rain') return;
     buf = '';
-    storm = !storm;
-    fill();
+    manual = true;
+    rlog('слово «rain» набрано: переключаю дождь', active ? 'выкл' : 'вкл');
+    setRain(!active);
+    if (active) fill();
   });
 }
 
