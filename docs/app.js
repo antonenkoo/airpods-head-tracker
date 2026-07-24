@@ -773,6 +773,147 @@ if (asciiEl) {
   }, 90);
 }
 
+
+/* ═══ Токийский дождь ════════════════════════════════════════════════ */
+/* канвас-оверлей на весь экран: отвесные капли в цвет активной неоновой
+   темы, три слоя глубины, вид сбоку. Наведи курсор на карточку или
+   кнопку: вокруг неё загорится тонкая рамка, и капли начнут отбиваться
+   от её верхней грани брызгами, как в 2D-платформере. Нижняя кромка
+   экрана работает как пол. Набери «rain» — морось станет ливнем */
+if (!noMotion) {
+  const cv = $('#rain'), ctx = cv.getContext('2d');
+  const DPR = Math.min(2, devicePixelRatio);
+  let W = 0, H = 0;
+  const resizeRain = () => {
+    W = cv.width  = Math.ceil(innerWidth  * DPR);
+    H = cv.height = Math.ceil(innerHeight * DPR);
+  };
+  resizeRain();
+  addEventListener('resize', resizeRain);
+
+  // дальний слой: тонкий и медленный; ближний: жирный и быстрый
+  const LAYERS = [
+    { n: 0.024, speed: 11, len: 14, w: 1.0, a: 0.22 },
+    { n: 0.018, speed: 17, len: 24, w: 1.4, a: 0.40 },
+    { n: 0.011, speed: 24, len: 36, w: 1.8, a: 0.62, splash: true },
+  ];
+  let storm = false;
+  const drops = [], droplets = [];
+  const spawn = (l, anywhere) => ({
+    l,
+    x: Math.random() * W,
+    y: anywhere ? Math.random() * H : -(l.len + Math.random() * 40) * DPR,
+    v: (l.speed + Math.random() * 6) * DPR,
+  });
+  const fill = () => {
+    drops.length = 0; droplets.length = 0;
+    const mul = storm ? 3.2 : 1;
+    LAYERS.forEach(l => {
+      const count = Math.round(innerWidth * l.n * mul);
+      for (let i = 0; i < count; i++) drops.push(spawn(l, true));
+    });
+  };
+  fill();
+  addEventListener('resize', fill);
+
+  /* блок под курсором становится препятствием: рамка на отступе PAD,
+     капли бьются о её верхнюю грань */
+  const PAD = 3;
+  const HOVERABLE = '.card, .btn-dl, .hero-chip, .stat, .step, .faq-item, ' +
+    '.note, .story-block, .terminal, .ascii-box, .calc-box, .shot-frame, .neon-sign';
+  let hoverEl = null;
+  if (fine) document.addEventListener('pointerover', e => {
+    const el = e.target.closest(HOVERABLE);
+    if (el === hoverEl) return;
+    hoverEl?.classList.remove('rain-hover');
+    hoverEl = el;
+    hoverEl?.classList.add('rain-hover');
+  });
+
+  // удар: капля разлетается брызгами-бусинами, дугой вверх и обратно
+  function impact(x, y, l) {
+    const n = l.splash ? 4 : 2 + (Math.random() < 0.5 ? 1 : 0);
+    for (let i = 0; i < n && droplets.length < 220; i++) {
+      droplets.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 3.6 * DPR,
+        vy: -(1.8 + Math.random() * 2.6) * DPR,
+        life: 1.1,
+      });
+    }
+  }
+
+  let prev = performance.now();
+  (function rainLoop(now) {
+    requestAnimationFrame(rainLoop);
+    const dt = Math.min(3, (now - prev) / 16.7); prev = now;
+    if (document.hidden) return;
+    let ob = null;
+    if (hoverEl) {
+      const r = hoverEl.getBoundingClientRect();
+      ob = { left: r.left - PAD, right: r.right + PAD, top: r.top - PAD };
+    }
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = themeAccentCss;
+    ctx.fillStyle = themeAccentCss;
+    const vMul = storm ? 1.5 : 1;
+    for (const d of drops) {
+      const vy = d.v * vMul * dt;
+      d.y += vy;
+      if (ob) {
+        const px = d.x / DPR, prevY = (d.y - vy) / DPR, curY = d.y / DPR;
+        if (px >= ob.left && px <= ob.right && prevY <= ob.top && curY >= ob.top) {
+          impact(d.x, ob.top * DPR, d.l);
+          Object.assign(d, spawn(d.l, false));
+          continue;
+        }
+      }
+      if (d.y - d.l.len * DPR > H) {
+        if (Math.random() < 0.5) impact(d.x, H, d.l);
+        Object.assign(d, spawn(d.l, false));
+        continue;
+      }
+      ctx.globalAlpha = d.l.a;
+      ctx.lineWidth = d.l.w * DPR;
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x, d.y - d.l.len * DPR);
+      ctx.stroke();
+    }
+    for (let i = droplets.length - 1; i >= 0; i--) {
+      const p = droplets[i];
+      p.vy += 0.22 * DPR * dt;
+      const prevPy = p.y;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      // брызги тоже физические: отбиваются от рамки и от пола
+      if (ob && p.vy > 0 && p.x >= ob.left * DPR && p.x <= ob.right * DPR &&
+          prevPy <= ob.top * DPR && p.y >= ob.top * DPR) {
+        p.y = ob.top * DPR; p.vy = -p.vy * 0.45; p.vx *= 0.92;
+      }
+      if (p.vy > 0 && p.y >= H) { p.y = H; p.vy = -p.vy * 0.45; p.vx *= 0.92; }
+      p.life -= 0.03 * dt;
+      if (p.life <= 0) { droplets.splice(i, 1); continue; }
+      ctx.globalAlpha = p.life * 0.7;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.4 * DPR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  })(prev);
+
+  // пасхалка: «rain» включает и выключает ливень
+  let buf = '';
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    buf = (buf + e.key.toLowerCase()).slice(-4);
+    if (buf !== 'rain') return;
+    buf = '';
+    storm = !storm;
+    fill();
+  });
+}
+
 /* ═══ Инициализация текстов ══════════════════════════════════════════ */
 setLang(lang);
 document.title = t('baseTitle');
