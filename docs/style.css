@@ -38,7 +38,8 @@ a{color:var(--accent);text-decoration:none}
 #scanlines{position:fixed;inset:0;z-index:89;pointer-events:none;opacity:.04;
   background:repeating-linear-gradient(0deg,transparent 0 2px,#000 2px 4px)}
 #rain{position:fixed;inset:0;width:100%;height:100%;z-index:88;pointer-events:none;
-  mix-blend-mode:screen;opacity:.55}
+  mix-blend-mode:screen;opacity:0;transition:opacity 2.5s ease}
+#rain.on{opacity:.55}
 .no-motion #rain{display:none}
 .rain-hover{outline:1px solid var(--accent);outline-offset:3px;border-radius:12px}
 #progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;
