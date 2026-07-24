@@ -41,7 +41,7 @@ a{color:var(--accent);text-decoration:none}
   mix-blend-mode:screen;opacity:0;transition:opacity 2.5s ease}
 #rain.on{opacity:.55}
 .no-motion #rain{display:none}
-.rain-hover{outline:1px solid var(--accent);outline-offset:3px;border-radius:12px}
+.rain-hover{outline:1px solid var(--accent);outline-offset:0}
 #progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:120;
   transform-origin:0 50%;transform:scaleX(0);
   background:linear-gradient(90deg,var(--accent),var(--blue))}
