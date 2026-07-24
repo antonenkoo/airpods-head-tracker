@@ -811,8 +811,9 @@ if (!noMotion) {
   const drops = [], droplets = [], drips = [];
   let pool = null;                  // плёнка воды на грани блока под ховером
   const COLW = 6;                   // колонка воды, CSS px
-  // профиль плато, подобран Марком в конфигураторе (2026-07-24)
-  const WATER = { flat: 0.62, inset: 2, cap: 4.5, gain: 0.08, evap: 4, drip: 1, ripple: 0.1 };
+  // профиль плато, подобран Марком в конфигураторе (2026-07-24, v11)
+  const WATER = { flat: 0.62, inset: 2, cap: 4.5, gain: 0.08, evap: 4,
+    drip: 0.1, dripStart: 48, ripple: 0.1 };
   function addWater(cssX, amt) {
     if (!pool) return;
     const i = Math.max(0, Math.min(pool.cols.length - 1, Math.floor((cssX - pool.x0) / COLW)));
@@ -977,13 +978,15 @@ if (!noMotion) {
         c[i] += (nb - c[i]) * 0.14 * dt;
         c[i] *= 1 - WATER.evap / 1000 * dt;
       }
-      const edge = (i, sideX) => {
+      // струйка стартует снаружи рамки, на dripStart ниже верхней грани
+      const edge = (i, edgeX, side) => {
         if (c[i] > 0.22 && drips.length < 48 && Math.random() < 0.35 * WATER.drip * dt) {
           c[i] -= 0.14;
-          drips.push({ x: sideX * DPR, y: (pool.y + 10) * DPR, vy: 0.22 * DPR, life: 3 });
+          drips.push({ xB: edgeX + side * 2.2, y: pool.y + WATER.dripStart, vy: 0.18,
+            seed: Math.random() * Math.PI * 2, life: 3 });
         }
       };
-      edge(0, pool.x0); edge(L - 1, pool.x1);
+      edge(0, pool.x0, -1); edge(L - 1, pool.x1, 1);
       const W2 = pool.x1 - pool.x0, M = Math.min(WATER.inset, W2 * 0.25);
       const env = i => {
         const u = ((i + 0.5) * COLW - M) / Math.max(1, W2 - 2 * M);
@@ -996,7 +999,8 @@ if (!noMotion) {
       for (let i = 0; i < L; i++) {
         const lvl = Math.min(1, c[i]) * env(i);
         if (lvl < 0.06) continue;
-        const h = WATER.cap * lvl * (1 + WATER.ripple * Math.sin(tnow / 260 + i * 0.8)) * DPR;
+        // рябь расходится радиально: из центра слоя к обоим краям
+        const h = WATER.cap * lvl * (1 + WATER.ripple * Math.sin(tnow / 260 - Math.abs(i - (L - 1) / 2) * 0.9)) * DPR;
         const x = (pool.x0 + i * COLW) * DPR, y = pool.y * DPR;
         ctx.globalAlpha = 0.3;
         ctx.fillRect(x, y - h, COLW * DPR + 1, h);
@@ -1004,24 +1008,34 @@ if (!noMotion) {
         ctx.fillRect(x, y - h, COLW * DPR + 1, 1.1 * DPR);
       }
     }
-    /* струйки: липнут к боковой грани, ниже нижней кромки блока переходят
-       в свободное падение */
+    /* струйки: симуляция стекающей воды снаружи рамки. Головка-капля с
+       сужающимся извилистым хвостом, липко-скользящий ход (вода то замирает,
+       то срывается), по пути отпускает капли; ниже кромки блока переходит в
+       свободное падение */
     for (let i = drips.length - 1; i >= 0; i--) {
       const p = drips[i];
-      const onSide = pool && ob && p.y / DPR < ob.bottom;
-      p.vy = onSide ? Math.min(p.vy + 0.03 * DPR * dt, 1.1 * DPR)
-                    : p.vy + 0.2 * DPR * dt;
-      p.y += p.vy * dt;
-      p.life -= 0.006 * dt;
-      if (p.life <= 0 || p.y > H + 20 * DPR) { drips.splice(i, 1); continue; }
-      ctx.globalAlpha = Math.min(1, p.life) * 0.65;
-      ctx.lineWidth = 1.3 * DPR;
+      const onSide = pool && ob && p.y < ob.bottom;
+      const slip = 0.55 + 0.55 * Math.max(0, Math.sin(p.y * 0.05 + p.seed * 3));
+      p.vy = onSide ? Math.min(p.vy + 0.02 * dt * slip, 0.9) : p.vy + 0.16 * dt;
+      p.y += p.vy * dt * (onSide ? slip : 1);
+      p.life -= 0.005 * dt;
+      if (p.life <= 0 || p.y * DPR > H + 20) { drips.splice(i, 1); continue; }
+      if (onSide && Math.random() < 0.01 * dt && droplets.length < 260)
+        droplets.push({ x: p.xB * DPR, y: p.y * DPR, vx: 0, vy: 0.6 * DPR, life: 0.8 });
+      const wob = yy => p.xB + (onSide ? Math.sin(yy * 0.06 + p.seed) * 1.4 : 0);
+      for (let k = 12; k >= 0; k--) {
+        const yy = p.y - k * 3;
+        if (pool && yy < pool.y + WATER.dripStart - 2) continue;
+        const a = Math.min(1, p.life) * (0.55 - k * 0.035);
+        if (a <= 0) continue;
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.arc(wob(yy) * DPR, yy * DPR, Math.max(0.4, 1.7 - k * 0.11) * DPR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = Math.min(1, p.life) * 0.85;
       ctx.beginPath();
-      ctx.moveTo(p.x, p.y - 7 * DPR);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 1.5 * DPR, 0, Math.PI * 2);
+      ctx.ellipse(wob(p.y) * DPR, p.y * DPR, 1.6 * DPR, 2.4 * DPR, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
