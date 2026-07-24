@@ -913,6 +913,18 @@ if (!noMotion) {
     ctx.lineCap = 'round';
     ctx.strokeStyle = themeAccentCss;
     ctx.fillStyle = themeAccentCss;
+    // подсветка блока под курсором — только ровная линия по верхней грани
+    if (ob) {
+      ctx.save();
+      ctx.lineCap = 'butt';
+      ctx.lineWidth = 1.5 * DPR;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(ob.left * DPR, ob.top * DPR);
+      ctx.lineTo(ob.right * DPR, ob.top * DPR);
+      ctx.stroke();
+      ctx.restore();
+    }
     for (const d of drops) {
       const vy = d.v * dt;
       d.y += vy;
