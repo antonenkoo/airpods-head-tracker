@@ -818,7 +818,7 @@ if (!noMotion) {
 
   /* блок под курсором становится препятствием: рамка на отступе PAD,
      капли бьются о её верхнюю грань */
-  const PAD = 10;
+  const PAD = 3;
   const HOVERABLE = '.card, .btn-dl, .hero-chip, .stat, .step, .faq-item, ' +
     '.note, .story-block, .terminal, .ascii-box, .calc-box, .shot-frame, .neon-sign';
   let hoverEl = null;
